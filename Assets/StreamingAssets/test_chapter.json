@@ -1,0 +1,32 @@
+{
+    "chapterId" : "debug_01",
+    "dialogues" : [
+        {
+            "id" : "line_01",
+            "speaker" : "系统",
+            "content" : "这是第一句测试文本。点击继续。",
+            "nextId" : "line_02"
+        },
+        {
+            "id" : "line_02",
+            "speaker" : "男主",
+            "content" : "现在出现选项，请选择。",
+            "options" : [
+                {"text" : "选A：去吃饭", "targetId" : "line_A"},
+                {"text" : "选B：去睡觉", "targetId" : "line_B"}
+            ]
+        },
+        {
+            "id" : "line_A",
+            "speaker" : "男主",
+            "content" : "你选择了吃饭。流程结束。",
+            "nextId" : "END"
+        },
+        {
+            "id" : "line_B",
+            "speaker" : "男主",
+            "content" : "你选择了睡觉。流程结束。",
+            "nextId" : "END"
+        }
+    ]
+}
