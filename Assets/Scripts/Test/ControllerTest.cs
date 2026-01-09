@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using LitJson;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class ControllerTest : MonoBehaviour
 {
@@ -47,7 +49,7 @@ public class ControllerTest : MonoBehaviour
     // ========================================
     // 1. 运行时状态
     // ========================================
-    private Dictionary<string, DialogueNode> _dialogueMap = new Dictionary<string, DialogueNode>();
+    private Dictionary<string, DialogueNode> _dialogueMap;
     private DialogueNode _currentNode;
 
     // ========================================
@@ -115,32 +117,8 @@ public class ControllerTest : MonoBehaviour
             string jsonStr = File.ReadAllText(filePath);
 
             ChapterModel chapter = JsonMapper.ToObject<ChapterModel>(jsonStr);
-            List<DialogueNode> dialogues = chapter.dialogues;
+            _dialogueMap = chapter.dialogues.ToDictionary<DialogueNode, string>((x) => x.id);
 
-            for (int i = 0; i < dialogues.Count; i++)
-            {
-                DialogueNode node = new DialogueNode();
-                node.id = dialogues[i].id;
-                node.speaker = dialogues[i].speaker;
-                node.content = dialogues[i].content;
-
-                if(dialogues[i].nextId != null)
-                    node.nextId = dialogues[i].nextId;
-
-                if (dialogues[i].options != null)
-                {
-                    node.options = new List<OptionNode>();
-                    for(int j = 0; j < dialogues[i].options.Count; j++)
-                    {
-                        OptionNode option = new OptionNode();
-                        option.text = dialogues[i].options[j].text;
-                        option.targetId = dialogues[i].options[j].targetId;
-                        node.options.Add(option);
-                    }
-                }
-
-                _dialogueMap.Add(node.id, node);
-            }
             print("Json 加载完毕，节点数：" + _dialogueMap.Count);
             foreach(var i in _dialogueMap)
             {
