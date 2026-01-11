@@ -1,37 +1,43 @@
+using LitJson;
+using Model;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
-using LitJson;
 using System.Linq;
-using Model;
+using UnityEngine;
+using UnityEngine.UI;
 
-public class ControllerTestWithGUI : MonoBehaviour
+public class ControllerTestWirhUGUI : MonoBehaviour
 {
-
     // ========================================
     // 1. 配置区域
     // ========================================
-    [Header("对话框")]
-    public Rect dialogueBoxRect;
-    public GUIStyle dialogueBoxStyle;
-    [Space()]
-    [Header("继续")]
-    public Rect nextBtnRect;
-    public GUIStyle nextBtnStyle;
-    [Space()]
-    [Header("选项框")]
-    public Rect optionsLayoutRect;
-    public GUIStyle optionStyle;
+    [Header("UI")]
+    [SerializeField]
+    private Text content;
+    [SerializeField]
+    private Text speakerName;
 
     // ========================================
-    // 2. 运行时状态
+    // 2. 公共调用接口
+    // ========================================
+
+    public void NextDialogue()
+    {
+        if (_currentNode == null) return;
+        PlayNode(_currentNode.nextId);
+        _dialogueForward = true;
+    }
+
+    // ========================================
+    // 3. 运行时状态
     // ========================================
     private Dictionary<string, DialogueNode> _dialogueMap;
     private DialogueNode _currentNode;
+    private bool _dialogueForward;
 
     // ========================================
-    // 3. 生命周期
+    // 4. 生命周期
     // ========================================
 
     // ---初始化---
@@ -39,48 +45,27 @@ public class ControllerTestWithGUI : MonoBehaviour
     {
         LoadJson();
         PlayNode("line_01"); // 开始时，播放第一句
+        _dialogueForward = true;
     }
 
-    // ---GUI测试---
-    private void OnGUI()
+    private void Update()
     {
-        // 如果当前已经没有对话节点，显示 游戏结束
-        if(_currentNode == null)
+        if (_dialogueForward && _currentNode != null)
         {
-            GUI.Label(dialogueBoxRect, "游戏结束", dialogueBoxStyle);
-        }
-        // 否则将 对话节点中的内容 显示在对话框 或 选项栏中
-        else
-        {
-            // 显示 对话节点中对话
-            GUI.Label(dialogueBoxRect, _currentNode.content, dialogueBoxStyle);
-
-            // 若有选择，则显示 选项栏
-            if (_currentNode.options != null && _currentNode.options.Count > 0)
+            if(speakerName != null)
             {
-                GUI.BeginGroup(optionsLayoutRect);
-                foreach (var opt in _currentNode.options)
-                {
-                    if (GUILayout.Button(opt.text, optionStyle))
-                    {
-                        PlayNode(opt.targetId);
-                    }
-                }
-                GUI.EndGroup();
+                speakerName.text = _currentNode.speaker;
             }
-            // 否则显示 继续
-            else
+            if(content != null)
             {
-                if (GUI.Button(nextBtnRect, "继续", nextBtnStyle))
-                {
-                    PlayNode(_currentNode.nextId);
-                }
+                content.text = _currentNode.content;
             }
+            _dialogueForward = false;
         }
     }
 
     // ========================================
-    // 4. 私有逻辑方法
+    // 5. 私有逻辑方法
     // ========================================
 
     /// <summary>
@@ -90,7 +75,7 @@ public class ControllerTestWithGUI : MonoBehaviour
     {
         string filePath = Path.Combine(Application.streamingAssetsPath, "test_chapter.json");
 
-        if(File.Exists(filePath))
+        if (File.Exists(filePath))
         {
             string jsonStr = File.ReadAllText(filePath);
 
@@ -98,7 +83,7 @@ public class ControllerTestWithGUI : MonoBehaviour
             _dialogueMap = chapter.dialogues.ToDictionary<DialogueNode, string>((x) => x.id);
 
             print("Json 加载完毕，节点数：" + _dialogueMap.Count);
-            foreach(var i in _dialogueMap)
+            foreach (var i in _dialogueMap)
             {
                 print(i.Key);
             }
@@ -115,7 +100,7 @@ public class ControllerTestWithGUI : MonoBehaviour
     /// <param name="id">对话节点的id编号</param>
     void PlayNode(string id)
     {
-        if(id == "END")
+        if (id == "END")
         {
             _currentNode = null;
             print("剧情结束！");

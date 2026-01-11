@@ -10,23 +10,38 @@
         },
         {
             "id" : "line_02",
-            "speaker" : "男主",
-            "content" : "现在出现选项，请选择。",
-            "options" : [
-                {"text" : "选A：去吃饭", "targetId" : "line_03"},
-                {"text" : "选B：去睡觉", "targetId" : "line_04"}
-            ]
+            "speaker" : "阿米娅",
+            "content" : "你好吗，博士？",
+            "nextId" : "line_03"
         },
         {
             "id" : "line_03",
-            "speaker" : "男主",
-            "content" : "你选择了吃饭。流程结束。",
-            "nextId" : "END"
+            "speaker" : "???",
+            "content" : "我这是在哪里？",
+            "nextId" : "line_04"
         },
         {
             "id" : "line_04",
-            "speaker" : "男主",
-            "content" : "你选择了睡觉。流程结束。",
+            "speaker" : "阿米娅",
+            "content" : "博士，我们在<b><i>「三江」</i></b>游戏项目预研阶段的测试场景里……",
+            "nextId" : "line_05"
+        },
+        {
+            "id" : "line_05",
+            "speaker" : "阿米娅",
+            "content" : "测试很快就会结束，在那之前，不得不委屈博士你一段时间了。",
+            "nextId" : "line_06"
+        },
+        {
+            "id" : "line_06",
+            "speaker" : "一个陌生的女声",
+            "content" : "看来这次测试成功了呢~",
+            "nextId" : "line_07"
+        },
+        {
+            "id" : "line_07",
+            "speaker" : "系统",
+            "content" : "------测试结束------",
             "nextId" : "END"
         }
     ]
