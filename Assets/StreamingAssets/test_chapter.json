@@ -67,6 +67,33 @@
         },
         {
             "id" : "line_10",
+            "speaker" : "阿米娅",
+            "content" : "刚才是谁在说话？",
+            "options" : [
+                {
+                    "text" : "普瑞赛斯！？",
+                    "targetId" : "line_11"
+                },
+                {
+                    "text" : "……",
+                    "targetId" : "line_12"
+                }
+            ]
+        },
+        {
+            "id" : "line_11",
+            "speaker" : "阿米娅",
+            "content" : "博士，那是你认识的人吗？",
+            "nextId" : "line_13"
+        },
+        {
+            "id" : "line_12",
+            "speaker" : "一个神秘的女声",
+            "content" : "<b><color=purple>呵呵呵~</color></b>",
+            "nextId" : "line_13"
+        },
+        {
+            "id" : "line_13",
             "speaker" : "系统",
             "content" : "------测试结束------",
             "nextId" : "END"

@@ -1,35 +1,148 @@
 using LitJson;
 using Model;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class ControllerTestWithUGUI : MonoBehaviour
 {
-    // ========================================
-    // 1. 配置区域
-    // ========================================
-    [Header("UI")]
-    [SerializeField] private Text content; // 对话框文字内容
+    #region 配置区域
+
+    [Header("System-Hide")]
+    [Tooltip("处于隐藏状态时，用于取消隐藏的全屏按钮")]
+    [SerializeField] private GameObject hideModeLayer;
+    [Tooltip("处于隐藏状态时，被隐藏的UI层")]
+    [SerializeField] private GameObject[] uiLayersToHide;
+
+    [Header("System-History")]
+    [Tooltip("整个历史记录层")]
+    [SerializeField] private GameObject historyLayer;
+    [Tooltip("历史记录滚动视窗上的ScrollRect")]
+    [SerializeField] private ScrollRect historyScrollRect;
+    [Tooltip("容纳历史记录项目的容器")] 
+    [SerializeField] private Transform historyContent;
+    [Tooltip("历史记录项目预制体")]
+    [SerializeField] private GameObject historyItemPrefab;
+    [Tooltip("历史记录最大条目数")]
+    [SerializeField] private int maxHistoryItemCount = 100;
+
+    [Header("System-AutoPlay")]
+    [Tooltip("自动播放按钮文本")]
+    [SerializeField] private Text autoPlayButtonText;
+    [Tooltip("自动播放时间间隔(s)")]
+    [SerializeField] private float autoPlayInterval = 3f; // 从对话框文字全部显示完毕时开始到自动播放下一个对话为止的时间间隔
+
+    [Header("System-Skip")]
+    [Tooltip("是否跳过章节剧情提示窗预制体")]
+    [SerializeField] private GameObject skipInformationPopupPrefab;
+    [Tooltip("提示信息弹窗容器")]
+    [SerializeField] private Transform informationContainer;
+
+    [Header("Dialog")]
+    [SerializeField] private Text DialogueContent; // 对话框文字内容
     [SerializeField] private Text speakerName; // 说话者名字
+    [SerializeField] private AudioSource nextDialogueAudio; // 点击对话框进入下一个对话结点时候的音效
 
     [Header("Options")]
+    [Tooltip("选项组容器")]
     [SerializeField] private Transform optionContainer; // 选项组容器
+    [Tooltip("选项按钮预制体")]
     [SerializeField] private GameObject optionPrefab; // 选项按钮预制体
+
+    [Header("Mask and Overlay")]
+    [SerializeField] private GameObject maskLayer; // 遮罩层
+    [SerializeField] private GameObject overlayLayer; // 覆盖层
 
     [Header("其他")]
     [Tooltip("打字机速度")]
     [SerializeField] private float typingInterval = 0.1f; // 打字时间间隔
-    [SerializeField] private GameObject maskLayer; // 遮罩层
-    [SerializeField] private GameObject overlayLayer; // 覆盖层
 
-    // ========================================
-    // 2. 公共调用接口
-    // ========================================
+    #endregion
+
+    #region 公共调用接口
+    /// <summary>
+    /// 当玩家点击“隐藏”按钮时触发
+    /// </summary>
+    public void ToggleHideMode()
+    {
+        _isHidden = !_isHidden;
+
+        // 处理全屏取消隐藏按键
+        if(hideModeLayer != null)
+        {
+            hideModeLayer.SetActive(_isHidden);
+        }
+
+        // 处理需要或者已经被隐藏的UI层
+        foreach(var layer in uiLayersToHide)
+        {
+            layer.SetActive(!_isHidden);
+        }
+
+    }
+
+    /// <summary>
+    /// 当玩家点击“历史”按钮时触发
+    /// </summary>
+    public void ToggleHistoryMode()
+    {
+        _isHistory = !_isHistory;
+
+        // 处理历史记录层
+        historyLayer.SetActive(_isHistory);
+
+        // 打开时，自动滚动到底部
+        StartCoroutine(AutoScrollToBottom());
+    }
+
+    /// <summary>
+    /// 当玩家点击“自动”按钮时触发
+    /// </summary>
+    public void ToggleAutoMode()
+    {
+        _isAutoPlay = !_isAutoPlay;
+        if (_isAutoPlay)
+        {
+            autoPlayButtonText.text = "自动中…";
+        }
+        else
+        {
+            autoPlayButtonText.text = "自动";
+        }
+    }
+
+    /// <summary>
+    /// 当玩家点击“跳过”按钮时触发
+    /// </summary>
+    public void Skip()
+    {
+        maskLayer.SetActive(true);
+        overlayLayer.SetActive(true);
+        _isOverlaid = true;
+        informationContainer.gameObject.SetActive(true);
+
+        GameObject infoPopupObj = Instantiate(skipInformationPopupPrefab, informationContainer);
+
+        Information_YorN infoPopupScript = infoPopupObj.GetComponent<Information_YorN>();
+
+        infoPopupScript.SetInformationText("确认要跳过本章剧情？");
+        infoPopupScript.SetYesText("确认");
+        infoPopupScript.SetNoText("取消");
+        infoPopupScript.SetCloseEffect(() =>
+        {
+            informationContainer.gameObject.SetActive(false);
+            overlayLayer.SetActive(false);
+            _isOverlaid = false;
+            maskLayer.SetActive(false);
+        });
+    }
 
     /// <summary>
     /// 当玩家点击对话框（上的Button）的时候触发
@@ -52,12 +165,25 @@ public class ControllerTestWithUGUI : MonoBehaviour
             }
 
 
-            content.text = _currentNode.content;
+            DialogueContent.text = _currentNode.content;
             _isTyping = false;
             return;
         }
+
+        // 停止自动播放协程
+        if (_isAutoPlay && _autoPlayCoroutine != null)
+        {
+            StopCoroutine(_autoPlayCoroutine);
+        }
+
+        // 触发点击音效
+        if (nextDialogueAudio != null)
+        {
+            nextDialogueAudio.PlayOneShot(nextDialogueAudio.clip);
+        }
+
         // 如果不处于打字状态，且是最后一个对话结点
-        if(_currentNode != null && _currentNode.nextId == "END")
+        if (_currentNode != null && _currentNode.nextId == "END")
         {
             print("本章节剧情播放结束");
             
@@ -65,31 +191,61 @@ public class ControllerTestWithUGUI : MonoBehaviour
         // 如果不处于打字状态，且不是最后一个对话结点
         else if(_currentNode != null)
         {
+            // 播放下一个结点
             PlayNode(_currentNode.nextId);
         }
     }
+    #endregion
 
-    // ========================================
-    // 3. 运行时状态
-    // ========================================
+    #region 运行时状态
+
     private Dictionary<string, DialogueNode> _dialogueMap;
     private DialogueNode _currentNode;
+
     private bool _isTyping = false; // 是否正在打字
     private Coroutine _typeTextCoroutine = null; // 用于记录已经开启的打字机协程
     private Stack<string> tagStack = new Stack<string>(); // 记录富文本标签名的栈，用于自动追加闭合标签
     private List<string> tagList = new List<string>(); // 记录富文本标签名的列表，用于自动追加开标签
-    
 
-    // ========================================
-    // 4. 生命周期
-    // ========================================
+    private bool _isOverlaid = false; // 是否处于被覆盖层覆盖的状态
+
+    private bool _isHidden = false; // 是否处于隐藏状态
+
+    private bool _isHistory = false; // 是否处于历史记录状态
+
+    private bool _isAutoPlay = false; // 是否处于自动播放状态
+    private Coroutine _autoPlayCoroutine = null; // 用于记录所启动的自动播放下一个结点的协程
+
+    #endregion
+
+    #region 生命周期
 
     // ---初始化---
     private void Start()
     {
         LoadJson();
 
-        if(maskLayer != null) // 初始时，关闭遮罩层
+        if (hideModeLayer != null) // 初始时，关闭全局取消隐藏按键
+        {
+            hideModeLayer.SetActive(false);
+        }
+
+        if (historyLayer != null) // 初始时，关闭历史记录层
+        {
+            historyLayer.SetActive(false);
+        }
+
+        if(optionContainer != null) // 初始时，关闭选项容器
+        {
+            optionContainer.gameObject.SetActive(false);
+        }
+
+        if(informationContainer != null) // 初始时，关闭提示信息弹窗容器
+        {
+            informationContainer.gameObject.SetActive(false);
+        }
+
+        if (maskLayer != null) // 初始时，关闭遮罩层
         {
             maskLayer.SetActive(false);
         }
@@ -97,14 +253,21 @@ public class ControllerTestWithUGUI : MonoBehaviour
         if (overlayLayer != null) // 初始时，关闭覆盖层
         {
             overlayLayer.SetActive(false);
+            _isOverlaid = false;
         }
+
+
 
         PlayNode("line_01"); // 开始时，播放第一句
     }
 
-    // ========================================
-    // 5. 私有逻辑方法
-    // ========================================
+    private void Update()
+    {
+        DetermineToAutoPlay();
+    }
+    #endregion
+
+    #region 私有逻辑方法
 
     /// <summary>
     /// 读取Json剧本并加载到运行时
@@ -138,19 +301,24 @@ public class ControllerTestWithUGUI : MonoBehaviour
     /// <param name="id">对话节点的id编号</param>
     void PlayNode(string id)
     {
+        // 如果要播放的结点id存在
         if (_dialogueMap.ContainsKey(id))
         {
-            _currentNode = _dialogueMap[id];
-            string targetStr = _currentNode.content;
-            content.text = "";
+            _currentNode = _dialogueMap[id]; // 将要播放的结点设置为 当前结点
+            string targetName = _currentNode.speaker; // 取当前结点的 说话者名字
+            string targetStr = _currentNode.content; // 取当前结点的 内容
+            DialogueContent.text = ""; // 清空对话框内容
 
             // 1. 设置说话者名字
-            speakerName.text = _currentNode.speaker;
+            speakerName.text = targetName;
 
-            // 2. 启动打字机协程，将当前播放结点的content打字到对话框上
+            // 2. 生成历史记录条目
+            AddHistoryItem(targetName, targetStr, false);
+
+            // 3. 启动打字机协程，将当前播放结点的content打字到对话框上
             _typeTextCoroutine = StartCoroutine(TypeText(targetStr));
 
-            // 3. 检测是否有选项
+            // 4. 检测是否有选项
             if(_currentNode.options != null && _currentNode.options.Count > 0)
             {
                 StartCoroutine(ShowOptionsAfterTyping());
@@ -161,9 +329,7 @@ public class ControllerTestWithUGUI : MonoBehaviour
     /// <summary>
     /// 一个打字机协程，用于对话框等文字内容的打字机效果展示
     /// </summary>
-    /// <param name="container">承载打出来的字的地方</param>
     /// <param name="targrtStr">要打印的最终文字</param>
-    /// <param name="typingInterval">打字时隙</param>
     /// <returns></returns>
     IEnumerator TypeText(string targetStr)
     {
@@ -227,7 +393,7 @@ public class ControllerTestWithUGUI : MonoBehaviour
                 additionStr += tag;
             }
 
-            content.text += additionStr;
+            DialogueContent.text += additionStr;
 
             yield return new WaitForSeconds(typingInterval);
         }
@@ -249,19 +415,25 @@ public class ControllerTestWithUGUI : MonoBehaviour
 
         maskLayer.SetActive(true); // 打开遮罩层
         overlayLayer.SetActive(true); // 打开覆盖层
+        _isOverlaid = true;
+        optionContainer.gameObject.SetActive(true); // 打开选项组容器
 
         foreach (var opt in _currentNode.options)
         {
             // 1. 生成Option预制体
             GameObject option = Instantiate(optionPrefab, optionContainer);
 
-            // 2. 设置Option文字
-            option.GetComponentInChildren<Text>().text = opt.text;
+            // 2. 闭包捕获变量
+            string textOfOpt = opt.text;
+            string targetIdOfOpt = opt.targetId;
 
-            // 3. 绑定点击事件
+            // 3. 设置Option文字
+            option.GetComponentInChildren<Text>().text = textOfOpt;
+
+            // 4. 绑定点击事件
             Button btn = option.GetComponent<Button>();
-            string targetId = opt.targetId; // 闭包捕获变量
-            btn.onClick.AddListener(() => { OnOptionClicked(targetId); });
+
+            btn.onClick.AddListener(() => { OnOptionClicked(textOfOpt, targetIdOfOpt); });
         }
     }
 
@@ -269,8 +441,12 @@ public class ControllerTestWithUGUI : MonoBehaviour
     /// 用于绑定对话选项的回调函数
     /// </summary>
     /// <param name="targetId">所选选项的下一个对话结点的Id</param>
-    void OnOptionClicked(string targetId)
+    void OnOptionClicked(string text, string targetId)
     {
+        // 1. 将被点击的内容做成历史记录条目添加
+        AddHistoryItem("",text ,true);
+
+        // 2. 销毁所有选项按钮，关闭遮罩层和覆盖层
         foreach (Transform childOption in optionContainer)
         {
             Destroy(childOption.gameObject);
@@ -278,7 +454,122 @@ public class ControllerTestWithUGUI : MonoBehaviour
 
         maskLayer.SetActive(false); // 关闭遮罩层
         overlayLayer.SetActive(false); // 关闭覆盖层
+        _isOverlaid = false;
+        optionContainer.gameObject.SetActive(false); // 关闭选项组容器
 
+        // 3. 播放所选选项指向的对话结点
         PlayNode(targetId);
     }
+
+    /// <summary>
+    /// 将已经播放的对话的说话者名字、说话内容，或者选项标志、选项内容以历史记录条目的形式
+    /// 加入到历史记录层的滚动视窗中
+    /// </summary>
+    /// <param name="name">说话者名字 或者 当是选项的时候为“选项”二字</param>
+    /// <param name="content">说话内容 或者 选项内容</param>
+    /// <param name="isOption">是否为选项</param>
+    private void AddHistoryItem(string name, string content, bool isOption)
+    {
+        // 1. 实例化预制体
+        GameObject itemObj = Instantiate(historyItemPrefab, historyContent);
+
+
+        HistoricalDialogueItem itemScript = itemObj.GetComponent<HistoricalDialogueItem>();
+
+        #region 调试信息
+        if(itemScript != null)
+        {
+            print("找到HistoricalDialogueItem脚本");
+        }
+        else
+        {
+            print("没找到HistoricalDialogueItem脚本");
+        }
+        #endregion
+
+        // 2. 填入名字字段
+        if (isOption)
+        {
+            itemScript.SetName("选项");
+        }
+        else
+        {
+            itemScript.SetName(name);
+        }
+
+        // 3. 填入内容字段
+        itemScript.SetContent(content);
+
+        // 4. 限制数量
+        // 如果历史记录条目数超过最大允许数量，则删除最早的一个条目，以节省内存
+        if(historyContent.childCount > maxHistoryItemCount)
+        {
+            Destroy(historyContent.GetChild(0).gameObject);
+        }
+
+        // 5. 如果历史记录界面处于打开状态，则自动滚动到底部
+        if (historyLayer.activeSelf)
+        {
+            StartCoroutine(AutoScrollToBottom());
+        }
+    }
+
+    /// <summary>
+    /// 自动将历史记录界面滚动到底端的协程函数
+    /// </summary>
+    private IEnumerator AutoScrollToBottom()
+    {
+        yield return new WaitForEndOfFrame(); // 等待这一帧结束，因为UI的高度不是实时刷新，而是下一帧才算出来
+
+        historyScrollRect.verticalNormalizedPosition = 0f;
+    }
+
+    /// <summary>
+    /// 决定是否启动自动播放下一个结点协程
+    /// </summary>
+    private void DetermineToAutoPlay()
+    {
+        // 如果当前处于自动播放状态 并且 目前没有启动自动播放协程 并且 不处于一系列不应当启动协程的状态
+        // 则应当启动自动播放下一个结点协程
+        if (_autoPlayCoroutine == null && _isAutoPlay && !_isTyping && !_isHidden && !_isOverlaid && !_isHistory)
+        {
+            if (_currentNode != null && _currentNode.nextId != "END")
+            {
+                // 启动自动播放下一个结点协程
+                _autoPlayCoroutine = StartCoroutine(AutoPlayNode(_currentNode.nextId, () => {
+                    _autoPlayCoroutine = null;
+                }));
+            }
+        }
+        // 如果自动播放下一个结点的协程已经被启动
+        // 但是状态演变为不应当启动，则要停止协程
+        else if (_autoPlayCoroutine != null)
+        {
+            if (!_isAutoPlay || _isHidden || _isOverlaid || _isHistory)
+            {
+                StopCoroutine(_autoPlayCoroutine);
+                _autoPlayCoroutine = null;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 自动播放下一个对话结点的协程
+    /// </summary>
+    /// <param name="id">要播放的下一对话结点的id</param>
+    /// <param name="act">外部实现的用于置空_autoPlayCoroutine变量的函数</param>
+    /// <returns></returns>
+    private IEnumerator AutoPlayNode(string id, UnityAction act)
+    {
+        // 1. 第一步，等待指定时间
+        yield return new WaitForSeconds(autoPlayInterval);
+
+        // 2. 第二步，播放
+        PlayNode(id);
+
+        // 3. 第三步，置空_autoPlayCoroutine变量
+        act.Invoke();
+    }
+    #endregion
 }
