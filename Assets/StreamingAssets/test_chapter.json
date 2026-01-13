@@ -34,12 +34,39 @@
         },
         {
             "id" : "line_06",
-            "speaker" : "一个陌生的女声",
-            "content" : "看来这次测试成功了呢~",
-            "nextId" : "line_07"
+            "speaker" : "系统",
+            "content" : "<b><color=red>是否确认关闭全舰防御系统？</color></b>",
+            "options" : [
+                {
+                    "text" : "是",
+                    "targetId" : "line_07"
+                },
+                {
+                    "text" : "否",
+                    "targetId" : "line_08"
+                }
+            ]
         },
         {
             "id" : "line_07",
+            "speaker" : "阿米娅",
+            "content" : "博士！你在干什么！！！",
+            "nextId" : "line_09"
+        },
+        {
+            "id" : "line_08",
+            "speaker" : "???",
+            "content" : "我不会重蹈覆辙了。",
+            "nextId" : "line_09"
+        },
+        {
+            "id" : "line_09",
+            "speaker" : "一个神秘的女声",
+            "content" : "<b><color=purple>这就是你的选择吗？看来这次测试成功了呢~</color></b>",
+            "nextId" : "line_10"
+        },
+        {
+            "id" : "line_10",
             "speaker" : "系统",
             "content" : "------测试结束------",
             "nextId" : "END"
