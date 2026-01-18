@@ -1,14 +1,14 @@
 using LitJson;
 using Model;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
 
 public class ControllerTestWithUGUI : MonoBehaviour
@@ -49,6 +49,8 @@ public class ControllerTestWithUGUI : MonoBehaviour
     [SerializeField] private Text DialogueContent; // 对话框文字内容
     [SerializeField] private Text speakerName; // 说话者名字
     [SerializeField] private AudioSource nextDialogueAudio; // 点击对话框进入下一个对话结点时候的音效
+    [Tooltip("打字机速度")]
+    [SerializeField] private float typingInterval = 0.1f; // 打字时间间隔
 
     [Header("Options")]
     [Tooltip("选项组容器")]
@@ -60,9 +62,20 @@ public class ControllerTestWithUGUI : MonoBehaviour
     [SerializeField] private GameObject maskLayer; // 遮罩层
     [SerializeField] private GameObject overlayLayer; // 覆盖层
 
-    [Header("其他")]
-    [Tooltip("打字机速度")]
-    [SerializeField] private float typingInterval = 0.1f; // 打字时间间隔
+    [Header("Visuals")]
+    [Tooltip("背景图片")]
+    [SerializeField] private Image bgImage;
+    [Tooltip("左侧人物立绘")]
+    [SerializeField] private Image charLeft;
+    [Tooltip("中间人物立绘")]
+    [SerializeField] private Image charCenter;
+    [Tooltip("右侧人物立绘")]
+    [SerializeField] private Image charRight;
+    [Tooltip("CG层")]
+    [SerializeField] private GameObject cgLayer;
+    [Tooltip("CG图片")]
+    [SerializeField] private Image cgImage;
+
 
     #endregion
 
@@ -223,7 +236,27 @@ public class ControllerTestWithUGUI : MonoBehaviour
     // ---初始化---
     private void Start()
     {
-        LoadJson();
+        LoadJson("test_chapter2.json");
+
+        if(cgLayer  != null) // 初始时，关闭CG层
+        {
+            cgLayer.SetActive(false);
+        }
+
+        if(charLeft != null) // 初始时，左侧立绘透明
+        {
+            charLeft.color = new Color(1, 1, 1, 0);
+        }
+
+        if (charCenter != null) // 初始时，中间立绘透明
+        {
+            charCenter.color = new Color(1, 1, 1, 0);
+        }
+
+        if (charRight != null) // 初始时，右侧立绘透明
+        {
+            charRight.color = new Color(1, 1, 1, 0);
+        }
 
         if (hideModeLayer != null) // 初始时，关闭全局取消隐藏按键
         {
@@ -272,9 +305,10 @@ public class ControllerTestWithUGUI : MonoBehaviour
     /// <summary>
     /// 读取Json剧本并加载到运行时
     /// </summary>
-    void LoadJson()
+    /// <param name="fileName">要加载的Json剧本的文件名</param>
+    void LoadJson(string fileName)
     {
-        string filePath = Path.Combine(Application.streamingAssetsPath, "test_chapter.json");
+        string filePath = Path.Combine(Application.streamingAssetsPath, fileName);
 
         if (File.Exists(filePath))
         {
@@ -322,6 +356,34 @@ public class ControllerTestWithUGUI : MonoBehaviour
             if(_currentNode.options != null && _currentNode.options.Count > 0)
             {
                 StartCoroutine(ShowOptionsAfterTyping());
+            }
+
+            // 5. 检测是否有背景图片变化
+            if(_currentNode.background != null)
+            {
+                UpdateImage(bgImage, _currentNode.background);
+            }
+
+            // 6. 检测是否有立绘变化
+            if(_currentNode.charLeft != null)
+            {
+                UpdateImage(charLeft, _currentNode.charLeft);
+            }
+
+            if(_currentNode.charCenter != null)
+            {
+                UpdateImage(charCenter, _currentNode.charCenter);
+            }
+
+            if(_currentNode.charRight != null)
+            {
+                UpdateImage(charRight, _currentNode.charRight);
+            }
+
+            // 7. 检测是否有CG变化
+            if(_currentNode.cgImage != null)
+            {
+                UpdateCG(cgImage, _currentNode.cgImage);
             }
         }
     }
@@ -570,6 +632,91 @@ public class ControllerTestWithUGUI : MonoBehaviour
 
         // 3. 第三步，置空_autoPlayCoroutine变量
         act.Invoke();
+    }
+
+    /// <summary>
+    /// 用来异步更新背景图片、立绘图片的函数
+    /// </summary>
+    /// <param name="image">要变化的承载图片资源的Image对象</param>
+    /// <param name="spriteName">图片资源的名字</param>
+    private async void UpdateImage(Image image, string spriteName)
+    {
+        if(spriteName == "REMOVE")
+        {
+            // 1. 置空图片
+            image.sprite = null;
+
+            // 2. 如果是立绘，让立绘透明
+            if (image == charLeft || image == charCenter || image == charRight)
+            {
+                image.color = new Color(1,1,1,0);
+            }
+        }
+        else
+        {
+            AsyncOperationHandle<Sprite> handle = Addressables.LoadAssetAsync<Sprite>(spriteName);
+            await handle.Task;
+
+            if(handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                Sprite sprite = handle.Result;
+
+                // 1. 设置图片
+                image.sprite = sprite;
+                
+                // 2. 如果是立绘，则让立绘不再透明
+                if(image == charLeft || image == charCenter || image == charRight)
+                {
+                    image.color = Color.white;
+                }
+            }
+            else
+            {
+                #region 调试信息
+                Debug.LogWarning($"[Addressables] 找不到资源: {spriteName}。请检查 Inspector 里的 Address 是否匹配。");
+                #endregion
+            }
+        }
+    }
+
+    /// <summary>
+    /// 用来异步更新CG图片的函数。
+    /// </summary>
+    /// <param name="image">要变化的承载CG图片的Image对象</param>
+    /// <param name="cgName">CG图片的名字</param>
+    private async void UpdateCG(Image image, string cgName)
+    {
+        if(cgName == "REMOVE")
+        {
+            // 1. 置空CG图片
+            image.sprite = null;
+
+            // 2. 关闭CG层
+            cgLayer.SetActive(false);
+        }
+        else
+        {
+            AsyncOperationHandle<Sprite> handle = Addressables.LoadAssetAsync<Sprite>(cgName);
+            await handle.Task;
+            if(handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                Sprite sprite = handle.Result;
+                // 1. 开启CG层
+                cgLayer.SetActive(true);
+
+                // 2. 配置CG图片
+                image.sprite = sprite;
+
+                // 3. 开启隐藏模式
+                ToggleHideMode();
+            }
+            else
+            {
+                #region 调试信息
+                Debug.LogWarning($"[Addressables] 找不到资源: {cgName}。请检查 Inspector 里的 Address 是否匹配。");
+                #endregion
+            }
+        }
     }
     #endregion
 }

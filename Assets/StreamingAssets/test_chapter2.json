@@ -1,0 +1,210 @@
+{
+    "chapterId" : "debug_02",
+    "dialogues" : [
+        {
+            "id" : "line_01",
+            "speaker" : "系统",
+            "content" : "欢迎进入<b>「三江」</b>游戏项目的第二个测试场景。",
+            "nextId" : "line_02"
+        },
+        {
+            "id" : "line_02",
+            "speaker" : "???",
+            "content" : "这次要测试什么内容？",
+            "nextId" : "line_03"
+        },
+        {
+            "id" : "line_03",
+            "speaker" : "系统",
+            "content" : "很高兴看到你在逐渐适应我们的节奏。接下来我们的测试内容很简单：背景图、立绘、CG。",
+            "nextId" : "line_04"
+        },
+        {
+            "id" : "line_04",
+            "speaker" : "???",
+            "content" : "需要我怎么做？是给我一些根本不会影响剧情走向的选项，还是让我按照顺序点亮火把？",
+            "nextId" : "line_05"
+        },
+        {
+            "id" : "line_05",
+            "speaker" : "系统",
+            "content" : "看得出来你很喜欢那些交互操作，但请让我们把交互留到下一次测试。这次，你只需要<b>「看」</b>。",
+            "background" : "Avg_bg_68_g14_corridor",
+            "nextId" : "line_06"
+        },
+        {
+            "id" : "line_06",
+            "speaker" : "系统",
+            "content" : "你是否看到<i>0_Background_Layer</i>上发生的变化？哦，不好意思，站在你的角度观察，我应该说：你是否看到我们所在的背景环境的变化？",
+            "options" : [
+                {
+                    "text" : "看到了",
+                    "targetId" : "line_07"
+                },
+                {
+                    "text" : "没看到",
+                    "targetId" : "line_08"
+
+                }
+            ]
+        },
+        {
+            "id" : "line_07",
+            "speaker" : "系统",
+            "content" : "真棒！看来控制器对背景层的操作是有效的，不过目前还需要确认立绘层和CG层是否受控……",
+            "nextId" : "line_09"
+        },
+        {
+            "id" : "line_08",
+            "speaker" : "系统",
+            "content" : "怎么会这样？可是我这边明明看到背景层的图片容器确实加载了新的图片来源啊……",
+            "nextId" : "line_09"
+        },
+        {
+            "id" : "line_09",
+            "speaker" : "???",
+            "content" : "你在说什么？",
+            "nextId" : "line_10"
+        },
+        {
+            "id" : "line_10",
+            "speaker" : "系统",
+            "content" : "哦，不好意思。可能是「我」，作为一个系统，仍然缺乏与人类交流的能力。这样吧，不如让你熟悉的「阿米娅」来继续担任你的测试搭档吧~",
+            "nextId" : "line_11"
+        },
+        {
+            "id" : "line_11",
+            "speaker" : "阿米娅",
+            "content" : "博士，你没事吧！？",
+            "charCenter" : "Avg_char_002_amiya_1",
+            "nextId" : "line_12"
+        },
+        {
+            "id" : "line_12",
+            "speaker" : "???",
+            "content" : "阿米娅，我没事。你怎么突然出现在这里？",
+            "nextId" : "line_13"
+        },
+        {
+            "id" : "line_13",
+            "speaker" : "阿米娅",
+            "content" : "刚才第一轮测试结束之后，博士你就突然消失了，而我一直在找你。看到你在进行第二轮测试，我就立即赶了过来，看到你没事我便放心了。",
+            "charLeft" : "Avg_char_002_amiya_1",
+            "charCenter" : "REMOVE",
+            "nextId" : "line_14"
+        },
+        {
+            "id" : "line_14",
+            "speaker" : "爱茵斯坦",
+            "content" : "嗨，博士。",
+            "charRight" : "einSmileClose",
+            "nextId" : "line_15"
+        },
+        {
+            "id" : "line_15",
+            "speaker" : "",
+            "content" : "(一个淡蓝色卷发的慵懒女人出现在你面前，不知为何，她总给你一种熟悉的感觉。)",
+            "nextId" : "line_16"
+        },
+        {
+            "id" : "line_16",
+            "speaker" : "???",
+            "content" : "你是谁？为什么感觉你离我这么近？",
+            "nextId" : "line_17"
+        },
+        {
+            "id" : "line_17",
+            "speaker" : "爱茵斯坦",
+            "content" : "你好，初次见面，我叫爱茵斯坦，「逆熵」的一位普通研究员，本次担任您的测试助理。",
+            "charRight" : "einNormalClose",
+            "nextId" : "line_18"
+        },
+        {
+            "id" : "line_18",
+            "speaker" : "爱茵斯坦",
+            "content" : "至于你刚才问我为什么离你这么近，那大概是因为我只有半身立绘，而阿米娅是全身立绘，由于游戏画面中用于容纳立绘图片的image容器是大小相同的，所以不管图片源的大小是多大，放入游戏画面的时候都会被拉伸成相同的的大小，这在视觉效果上就会显得我这个原本只画了半身的立绘看上去更大。",
+            "nextId" : "line_19"
+        },
+        {
+            "id" : "line_19",
+            "speaker" : "爱茵斯坦",
+            "content" : "近大远小，大就是近。",
+            "nextId" : "line_20"
+        },
+        {
+            "id" : "line_20",
+            "speaker" : "安柏",
+            "content" : "你好！旅行者！",
+            "charCenter" : "Amber",
+            "nextId" : "line_21"
+        },
+        {
+            "id" : "line_21",
+            "speaker" : "???",
+            "content" : "吓我一条！安柏？为什么你是带着立绘背景的？而且，似乎把阿米娅挡住了，却没有挡住爱茵……",
+            "nextId" : "line_22"
+        },
+        {
+            "id" : "line_22",
+            "speaker" : "爱茵斯坦",
+            "content" : "观察得很仔细，博士。安柏之所以是带着背景图的，是因为她的图片源并没有处理好背景部分的透明度。",
+            "nextId" : "line_23"
+        },
+        {
+            "id" : "line_23",
+            "speaker" : "爱茵斯坦",
+            "content" : "事实上，我和阿米娅的图片源都不是以你能看到的立绘人物轮廓为图片边缘轮廓的。",
+            "nextId" : "line_24"
+        },
+        {
+            "id" : "line_24",
+            "speaker" : "爱茵斯坦",
+            "content" : "真实的立绘图片是一个宽高比1:1的矩形图片，只不过这张图片中\"背景\"部分的像素中有一个\"Alpha\"参数，这是用来控制像素透明度的参数。立绘图片的背景像素应该通过这个参数被设置为透明的。",
+            "nextId" : "line_25"
+        },
+        {
+            "id" : "line_25",
+            "speaker" : "爱茵斯坦",
+            "content" : "至于你刚才问为什么安柏的图片挡住了阿米娅却没有挡住我，那是因为游戏画面上三个立绘位置在渲染顺序上是不同的，后渲染的会覆盖先渲染的。",
+            "nextId" : "line_26"
+        },
+        {
+            "id" : "line_26",
+            "speaker" : "???",
+            "content" : "这是什么？怎么突然一个……CG？",
+            "cgImage" : "CG3",
+            "nextId" : "line_27"
+        },
+        {
+            "id" : "line_27",
+            "speaker" : "爱茵斯坦",
+            "content" : "看来你已经成功看到CG了，那么本次测试算是圆满结束了。",
+            "nextId" : "line_28"
+        },
+        {
+            "id" : "line_28",
+            "speaker" : "???",
+            "content" : "结束了吗？这样的测试还有多少轮？",
+            "background" : "Avg_bg_59_g13_castlebalcony",
+            "charCenter" : "REMOVE",
+            "charRight" : "einSmileClose",
+            "cgImage" : "REMOVE",
+            "nextId" : "line_29"
+        },
+        {
+            "id" : "line_29",
+            "speaker" : "系统",
+            "content" : "---测试结束---",
+            "background" : "REMOVE",
+            "charLeft" : "REMOVE",
+            "charRight" : "REMOVE",
+            "nextId" : "line_30"
+        },
+        {
+            "id" : "line_30",
+            "speaker" : "???",
+            "content" : "喂！怎么突然结束了！？阿米娅、爱茵，你们去哪了！？",
+            "nextId" : "END"
+        }
+    ]
+}
