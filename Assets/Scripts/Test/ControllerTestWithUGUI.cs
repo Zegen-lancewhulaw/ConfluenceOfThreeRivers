@@ -229,6 +229,9 @@ public class ControllerTestWithUGUI : MonoBehaviour
     private bool _isAutoPlay = false; // 是否处于自动播放状态
     private Coroutine _autoPlayCoroutine = null; // 用于记录所启动的自动播放下一个结点的协程
 
+    private Dictionary<Image, string> imageSpriteNameDic = new Dictionary<Image, string>(); // 用于记录Image对象目前承载的图片的名字
+    private Dictionary<string, AsyncOperationHandle<Sprite>> spriteHandlesDic = new Dictionary<string, AsyncOperationHandle<Sprite>>(); // 用于记录异步加载的精灵图片句柄
+    private Dictionary<string, int> spriteHandleCountDic = new Dictionary<string, int>(); // 用于记录对某一个精灵图片的异步加载成功请求数
     #endregion
 
     #region 生命周期
@@ -289,7 +292,12 @@ public class ControllerTestWithUGUI : MonoBehaviour
             _isOverlaid = false;
         }
 
-
+        // 初始记录被控制的若干Image容器当前存储的图片的名字
+        imageSpriteNameDic.Add(bgImage, null);
+        imageSpriteNameDic.Add(charLeft, null);
+        imageSpriteNameDic.Add(charCenter, null);
+        imageSpriteNameDic.Add(charRight, null);
+        imageSpriteNameDic.Add(cgImage, null);
 
         PlayNode("line_01"); // 开始时，播放第一句
     }
@@ -383,7 +391,7 @@ public class ControllerTestWithUGUI : MonoBehaviour
             // 7. 检测是否有CG变化
             if(_currentNode.cgImage != null)
             {
-                UpdateCG(cgImage, _currentNode.cgImage);
+                UpdateImage(cgImage, _currentNode.cgImage);
             }
         }
     }
@@ -641,82 +649,163 @@ public class ControllerTestWithUGUI : MonoBehaviour
     /// <param name="spriteName">图片资源的名字</param>
     private async void UpdateImage(Image image, string spriteName)
     {
-        if(spriteName == "REMOVE")
+        // 获取image当前承载的图片的名字
+        string currentSpriteName = imageSpriteNameDic[image];
+        // 引用image变更后应当承载的指定的精灵图片
+        Sprite sprite = null;
+
+        // 当指令为REMOVE时，做卸载动作
+        if (spriteName == "REMOVE")
         {
             // 1. 置空图片
             image.sprite = null;
 
-            // 2. 如果是立绘，让立绘透明
+            // 2. 更新imageSpriteNameDic
+            imageSpriteNameDic[image] = null;
+
+            // 3. 释放资源
+            ReleaseSpriteReference(currentSpriteName);
+
+            // 4. 针对变更的Image的角色做特殊处理
+            // 如果REMOVE的是立绘Image
             if (image == charLeft || image == charCenter || image == charRight)
             {
-                image.color = new Color(1,1,1,0);
+                UpdateCharImage(image, true);
+            }
+            // 如果REMOVE的是CGImage
+            if(image == cgImage)
+            {
+                UpdateCGImage(image, null, true);
             }
         }
-        else
+        // 当确有图片名字时
+        else if(spriteName != null)
         {
-            AsyncOperationHandle<Sprite> handle = Addressables.LoadAssetAsync<Sprite>(spriteName);
-            await handle.Task;
-
-            if(handle.Status == AsyncOperationStatus.Succeeded)
+            // 如果当前装载的图片就是指令要变更的图片，不做动作，直接返回
+            if (currentSpriteName == spriteName)
             {
-                Sprite sprite = handle.Result;
+                return;
+            }
 
-                // 1. 设置图片
-                image.sprite = sprite;
-                
-                // 2. 如果是立绘，则让立绘不再透明
-                if(image == charLeft || image == charCenter || image == charRight)
+            // 如果当前装载的图片与指令要变更的图片不同
+            // 如果当前加载的精灵图片资源池中已经有名字为spriteName的资源
+            if (spriteHandlesDic.ContainsKey(spriteName))
+            {
+                // 获取名为spriteName的图片资源
+                sprite = spriteHandlesDic[spriteName].Result;
+            }
+            // 如果当前尚未加载名为spriteName的资源
+            else
+            {
+                // 异步获取资源
+                AsyncOperationHandle<Sprite> handle = Addressables.LoadAssetAsync<Sprite>(spriteName);
+                await handle.Task;
+
+                if (handle.Status == AsyncOperationStatus.Succeeded)
                 {
-                    image.color = Color.white;
+                    // 句柄入字典，以备复用
+                    spriteHandlesDic.Add(spriteName, handle);
+                    // 获取名为spriteName的图片资源
+                    sprite = handle.Result;
+                }
+                else
+                {
+                    Addressables.Release<Sprite>(handle);
+
+                    #region 调试信息
+                    Debug.LogWarning($"[Addressables] 找不到资源: {spriteName}。请检查 Inspector 里的 Address 是否匹配。");
+                    #endregion
                 }
             }
+
+            // 1. 设置新图片
+            image.sprite = sprite;
+
+            // 2. 更新imageSpriteNameDic
+            imageSpriteNameDic[image] = spriteName;
+
+            // 3. 为新图片增加引用计数
+            if (spriteHandleCountDic.ContainsKey(spriteName))
+            {
+                spriteHandleCountDic[spriteName]++;
+            }
             else
             {
-                #region 调试信息
-                Debug.LogWarning($"[Addressables] 找不到资源: {spriteName}。请检查 Inspector 里的 Address 是否匹配。");
-                #endregion
+                spriteHandleCountDic.Add(spriteName, 1);
+            }
+            #region 调试信息
+            print($"资源{spriteName}引用数+1，当前计数：{spriteHandleCountDic[spriteName]}");
+            #endregion
+
+            // 4. 减少旧图片的引用计数（释放资源）
+            ReleaseSpriteReference(currentSpriteName);
+
+            // 5. 针对变更的Image的在UI系统中扮演的角色做特殊处理
+            // 如果变更的是立绘Image
+            if (image == charLeft || image == charCenter || image == charRight)
+            {
+                UpdateCharImage(image, false);
+            }
+            // 如果变更的是CGImage
+            if(image == cgImage)
+            {
+                UpdateCGImage(image, sprite, false);
             }
         }
     }
 
-    /// <summary>
-    /// 用来异步更新CG图片的函数。
-    /// </summary>
-    /// <param name="image">要变化的承载CG图片的Image对象</param>
-    /// <param name="cgName">CG图片的名字</param>
-    private async void UpdateCG(Image image, string cgName)
+    void ReleaseSpriteReference(string spriteName)
     {
-        if(cgName == "REMOVE")
+        if(spriteName != null && spriteHandleCountDic.ContainsKey(spriteName) && spriteHandleCountDic[spriteName] > 0)
         {
-            // 1. 置空CG图片
-            image.sprite = null;
-
-            // 2. 关闭CG层
-            cgLayer.SetActive(false);
+            spriteHandleCountDic[spriteName]--;
+            #region 调试信息
+            print($"资源{spriteName}引用数-1，当前计数：{spriteHandleCountDic[spriteName]}");
+            #endregion
+            if (spriteHandleCountDic[spriteName] == 0)
+            {
+                if (spriteHandlesDic.ContainsKey(spriteName)){
+                    Addressables.Release(spriteHandlesDic[spriteName]);
+                    spriteHandlesDic.Remove(spriteName);
+                    spriteHandleCountDic.Remove(spriteName);
+                    #region 调试信息
+                    print($"已释放计数为0的资源：{spriteName}");
+                    #endregion
+                }
+            }
         }
+    }
+
+    void UpdateCharImage(Image image, bool isREMOVE)
+    {
+        // 如果是在对话结点指示REMOVE此立绘Image时调用，则隐藏之
+        if (isREMOVE)
+        {
+            image.color = new Color(1, 1, 1, 0);
+        }
+        // 否则显示之
         else
         {
-            AsyncOperationHandle<Sprite> handle = Addressables.LoadAssetAsync<Sprite>(cgName);
-            await handle.Task;
-            if(handle.Status == AsyncOperationStatus.Succeeded)
-            {
-                Sprite sprite = handle.Result;
-                // 1. 开启CG层
-                cgLayer.SetActive(true);
-
-                // 2. 配置CG图片
-                image.sprite = sprite;
-
-                // 3. 开启隐藏模式
-                ToggleHideMode();
-            }
-            else
-            {
-                #region 调试信息
-                Debug.LogWarning($"[Addressables] 找不到资源: {cgName}。请检查 Inspector 里的 Address 是否匹配。");
-                #endregion
-            }
+            image.color = Color.white;
         }
     }
+
+    void UpdateCGImage(Image image, Sprite sprite, bool isRemove)
+    {
+        // 如果是在对话结点指示REMOVE此CGImage时调用，则关闭CG层
+        if (isRemove)
+        {
+            cgLayer.SetActive(false);
+        }
+        // 否则开启CG层，设置CG图片，开启隐藏模式
+        else
+        {
+            cgLayer.SetActive(true);
+            cgImage.sprite = sprite;
+            ToggleHideMode();
+        }
+    }
+
+    
     #endregion
 }
