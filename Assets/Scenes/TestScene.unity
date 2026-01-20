@@ -199,9 +199,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 035634a655b3af04ca44eaf9d9ddbdd8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  historyManager: {fileID: 830647253}
-  controller: {fileID: 3312546}
   stageManager: {fileID: 1150506940}
+  controller: {fileID: 3312546}
+  historyManager: {fileID: 830647253}
   systemLayer: {fileID: 693641803}
   hideButton: {fileID: 2087569456}
   hideCancelButton: {fileID: 1358035961}
@@ -1338,6 +1338,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 640f6071e77d10b488535a8fe6944fbe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  uiManager: {fileID: 18158232}
+  controller: {fileID: 3312546}
+  stageManager: {fileID: 1150506940}
   historyLayer: {fileID: 965774434}
   historyScrollRect: {fileID: 1532228342}
   historyItemContainer: {fileID: 1024601358}

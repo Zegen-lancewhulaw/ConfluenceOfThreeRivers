@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace AVG
@@ -10,10 +11,10 @@ namespace AVG
     public class UIManager : MonoBehaviour
     {
         #region 引用区域
-        [Header("Cooperative Manager")]
-        public HistoryManager historyManager;
-        public Controller controller;
+        [Header("Cooperative Managers")]
         public StageManager stageManager;
+        public Controller controller;
+        public HistoryManager historyManager;
 
         [Header("系统层")]
         [SerializeField] private GameObject systemLayer;
@@ -74,6 +75,20 @@ namespace AVG
 
         #endregion
 
+        #region 事件
+        // 自动播放按钮被点击
+        public UnityAction autoPlayButtonClicked;
+        // 对话框继续按钮被点击
+        public UnityAction continueButtonClicked;
+        // 对话框内容更新
+        public UnityAction<string, string> dialogueBoxUpdate;
+        // 选项按钮被点击
+        public UnityAction<string, string> optionButtonClicked;
+        public UnityAction<string> targetIdChosen;
+        // 历史记录按钮被点击
+        public UnityAction<bool> historyButtonClicked;
+        #endregion
+
         #region 公共调用接口
         /// <summary>
         /// 初始化UI
@@ -96,7 +111,7 @@ namespace AVG
             autoPlayButton?.onClick.AddListener(() => 
             {
                 autoPlayButtonText.text = (autoPlayButtonText.text == "自动") ? "自动中..." : "自动";
-                controller.ToggleAutoMode();
+                autoPlayButtonClicked?.Invoke();
             });
             autoPlayButtonText.text = "自动";
 
@@ -107,13 +122,19 @@ namespace AVG
             dialogLayer?.SetActive(true);
 
             // 1. 对话框点击继续按钮
-            continueButton?.onClick.AddListener(controller.NextDialogue);
+            continueButton?.onClick.AddListener(continueButtonClicked);
 
             // --- 交互层 ---
             infoContainer.gameObject.SetActive(false);
             optionContainer.gameObject.SetActive(false);
             interactionLayer.gameObject.SetActive(false);
             interactionMask.gameObject.SetActive(false);
+
+            // --- 监听事件 ---
+            if(stageManager != null)
+            {
+                stageManager.CGUpdated += ToggleHideMode;
+            }
 
         }
 
@@ -140,8 +161,8 @@ namespace AVG
         public void ToggleHistoryMode()
         {
             _isOnHistory = !_isOnHistory;
-            if (_isOnHistory) historyManager.OpenHistory();
-            else historyManager.CloseHistory();
+
+            historyButtonClicked?.Invoke(_isOnHistory);
         }
 
         /// <summary>
@@ -216,8 +237,8 @@ namespace AVG
             // --- 打字 ---
             dialogueContent.text = "";
             _typeTextCoroutine = StartCoroutine(TypeText(content));
-            // --- 添加历史记录 ---
-            historyManager.AddHistoryItem(name, content, false);
+            // --- 触发回调函数 ---
+            dialogueBoxUpdate?.Invoke(name, content);
         }
 
         /// <summary>
@@ -389,7 +410,10 @@ namespace AVG
             _isInteracting = true;
 
             // 打开选项组容器
-            optionContainer.gameObject.SetActive(true); 
+            optionContainer.gameObject.SetActive(true);
+
+            // 准备选项点击事件上的回调函数
+            optionButtonClicked += OnOptionClicked;
 
             // 生成选项
             foreach (var opt in options)
@@ -404,9 +428,12 @@ namespace AVG
                 // 3. 设置Option文字
                 optionObj.GetComponentInChildren<Text>().text = textOfOpt;
 
-                // 4. 绑定点击事件
+                // 4. 监听点击选项事件
                 Button btn = optionObj.GetComponent<Button>();
-                btn.onClick.AddListener(() => { OnOptionClicked(textOfOpt, targetIdOfOpt); });
+                btn.onClick.AddListener(() =>
+                {
+                    optionButtonClicked?.Invoke(textOfOpt, targetIdOfOpt);
+                });
             }
         }
 
@@ -416,9 +443,6 @@ namespace AVG
         /// <param name="targetId">所选选项的下一个对话结点的Id</param>
         void OnOptionClicked(string text, string targetId)
         {
-            // --- 添加历史记录 ---
-            historyManager.AddHistoryItem("", text, true);
-
             // --- 清理现场 ---
             // 销毁所有选项按钮
             foreach (Transform childOption in optionContainer)
@@ -434,8 +458,8 @@ namespace AVG
             interactionLayer.gameObject.SetActive(false);
             _isInteracting = false;
 
-            // --- 向控制器返回所选的下一个结点id ---
-            controller.SetChosenId(targetId);
+            // 执行目标结点选定的回调函数
+            targetIdChosen?.Invoke(targetId);
         }
         #endregion
     }

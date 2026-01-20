@@ -26,9 +26,9 @@ namespace AVG
                 return spritesDic[spriteName].Result;
             }
 
-            Sprite loadedSprite = await LoadSpriteAsnyc(spriteName);
+            await LoadSpriteAsnyc(spriteName);
 
-            return loadedSprite;
+            return spritesDic.ContainsKey(spriteName) ? spritesDic[spriteName].Result : null;
         }
         #endregion
 
@@ -38,7 +38,11 @@ namespace AVG
         #endregion
 
         #region 私有逻辑函数
-        async Task<Sprite> LoadSpriteAsnyc(string spriteName)
+        /// <summary>
+        /// 异步加载指定名字的精灵图片资源，如果找到则加入到字典
+        /// </summary>
+        /// <param name="spriteName">要加载的精灵图片的名字</param>
+        private async Task<Sprite> LoadSpriteAsnyc(string spriteName)
         {
             
             // --- 开始异步加载 --- 
@@ -66,12 +70,44 @@ namespace AVG
                 Debug.Log($"ResourceManager: 资源加载成功: {spriteName}");
                 #endregion
 
-                if (!spritesDic.ContainsKey(spriteName))
+                // 在将加载成功的资源添加到字典前，检查是否在异步返回之前已经被其他线程抢先加载到该资源
+                if (spritesDic.ContainsKey(spriteName))
+                {
+                    Addressables.Release(handle);
+                    return null;
+                }
+                else
                 {
                     spritesDic.Add(spriteName, handle);
+                    return handle.Result;
                 }
-                return handle.Result;
             }
+        }
+
+        /// <summary>
+        /// 清空资源缓存的协程
+        /// </summary>
+        private void ClearCache()
+        {
+            // --- 清理精灵图片资源 ---
+            ClearSpritesCache();
+
+            // 清理其他资源 : TODO
+        }
+
+        /// <summary>
+        /// 清空精灵图片资源缓存
+        /// </summary>
+        private void ClearSpritesCache()
+        {
+            foreach(var item in spritesDic)
+            {
+                if (item.Value.IsValid())
+                {
+                    Addressables.Release(item.Value);
+                }
+            }
+            spritesDic.Clear();
         }
         #endregion
     }

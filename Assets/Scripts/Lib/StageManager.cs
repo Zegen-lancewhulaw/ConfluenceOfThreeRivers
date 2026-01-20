@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Events;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
 
@@ -159,6 +161,10 @@ namespace AVG
         }
         #endregion
 
+        #region 事件
+        public UnityAction CGUpdated;
+        #endregion
+
         #region 运行时状态
         // 用于记录Image对象目前承载的图片的名字
         private Dictionary<Image, string> imageSpriteNameDic = new Dictionary<Image, string>();
@@ -244,7 +250,8 @@ namespace AVG
             {
                 cgLayer.SetActive(true);
                 cgImage.sprite = sprite;
-                uiManager.ToggleHideMode();
+                // 执行回调函数
+                CGUpdated?.Invoke();
             }
         }
         #endregion

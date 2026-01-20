@@ -8,6 +8,11 @@ namespace AVG
     public class HistoryManager : MonoBehaviour
     {
         #region 引用区域
+        [Header("Cooperative Managers")]
+        public UIManager uiManager;
+        public Controller controller;
+        public StageManager stageManager;
+
         [Header("System-History")]
         [Tooltip("整个历史记录层")]
         [SerializeField] private GameObject historyLayer;
@@ -65,6 +70,26 @@ namespace AVG
         }
 
         /// <summary>
+        /// 添加对话历史记录
+        /// </summary>
+        /// <param name="name">说话者名字</param>
+        /// <param name="content">说话内容</param>
+        public void AddDialogueHistoryItem(string name, string content)
+        {
+            AddHistoryItem(name, content, false);
+        }
+
+        /// <summary>
+        /// 添加选项历史记录
+        /// </summary>
+        /// <param name="text">选项内容</param>
+        /// <param name="targetId">选项指向的下一个结点id</param>
+        public void AddOptionHistoryItem(string text, string targetId)
+        {
+            AddHistoryItem(null, text, true);
+        }
+
+        /// <summary>
         /// 添加历史记录
         /// （对话框内容更新时 或者 玩家选择选项时触发
         /// 将已经播放的对话的说话者名字、说话内容，或者选项标志、选项内容...
@@ -116,7 +141,21 @@ namespace AVG
         #region 生命周期
         private void Start()
         {
+            // --- 初始化 ---
             InitHistory();
+            // --- 监听事件 ---
+            if(uiManager != null)
+            {
+                uiManager.dialogueBoxUpdate += AddDialogueHistoryItem;
+                uiManager.optionButtonClicked += AddOptionHistoryItem;
+                uiManager.historyButtonClicked += (isOnHistory) =>
+                {
+                    if (isOnHistory)
+                        OpenHistory();
+                    else
+                        CloseHistory();
+                };
+            }
         }
         #endregion
 

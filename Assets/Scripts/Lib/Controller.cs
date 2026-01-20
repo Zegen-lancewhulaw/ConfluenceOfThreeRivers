@@ -12,10 +12,9 @@ using UnityEngine.UI;
 public class Controller : MonoBehaviour
 {
     #region 配置区域
+    [Header("Cooperative Managers")]
     public StageManager stageManager;
-
     public UIManager uiManager;
-
     public HistoryManager historyManager;
 
     [Header("System-AutoPlay")]
@@ -58,14 +57,6 @@ public class Controller : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 被uiManager调用的函数，用于在玩家点击选项后播放所指向的下一个结点
-    /// </summary>
-    /// <param name="id">所选选项指向的下一个结点</param>
-    public void SetChosenId(string id)
-    {
-        PlayNode(id);
-    }
     #endregion
 
     #region 运行时状态
@@ -131,6 +122,10 @@ public class Controller : MonoBehaviour
             Debug.LogError("historyManager 游戏对象未激活");
         }
 
+        // --- 5. 监听事件 ---
+        uiManager.autoPlayButtonClicked += ToggleAutoMode;
+        uiManager.continueButtonClicked += NextDialogue;
+        uiManager.targetIdChosen += PlayNode;
 
         // 开始时，播放第一句
         PlayNode("line_01");
