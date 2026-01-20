@@ -2,10 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Model{
-    // ========================================
-    // 0. 数据模型 (model)
-    // ========================================
+namespace AVG.Model{
     public class ChapterModel
     {
         public string chapterId;

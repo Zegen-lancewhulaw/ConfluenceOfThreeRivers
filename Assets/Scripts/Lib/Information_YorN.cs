@@ -28,7 +28,7 @@ public class Information_YorN : MonoBehaviour
 
     public void SetCloseEffect(UnityAction act)
     {
-        if(close  != null && act != null)
+        if(close != null && act != null)
         {
             close.onClick.AddListener(act);
         }

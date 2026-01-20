@@ -4,7 +4,7 @@ using System.IO;
 using UnityEngine;
 using LitJson;
 using System.Linq;
-using Model;
+using AVG.Model;
 
 public class ControllerTestWithGUI : MonoBehaviour
 {

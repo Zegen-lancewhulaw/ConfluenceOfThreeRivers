@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class HistoricalDialogueItem : MonoBehaviour
+public class HistoryItem : MonoBehaviour
 {
     [Header("子对象引用")]
     [Tooltip("承载名字的Text")]
