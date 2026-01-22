@@ -85,7 +85,7 @@ namespace AVG
         }
 
         /// <summary>
-        /// 清空资源缓存的协程
+        /// 清空资源缓存
         /// </summary>
         private void ClearCache()
         {

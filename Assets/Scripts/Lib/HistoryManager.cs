@@ -10,14 +10,8 @@ namespace AVG
         #region 引用区域
         [Header("Cooperative Managers")]
         public UIManager uiManager;
-        public Controller controller;
-        public StageManager stageManager;
 
         [Header("System-History")]
-        [Tooltip("整个历史记录层")]
-        [SerializeField] private GameObject historyLayer;
-        [Tooltip("历史记录滚动视窗上的ScrollRect")]
-        [SerializeField] private ScrollRect historyScrollRect;
         [Tooltip("容纳历史记录项目的容器")]
         [SerializeField] private Transform historyItemContainer;
         [Tooltip("历史记录项目预制体")]
@@ -34,8 +28,6 @@ namespace AVG
         {
             // --- 清空历史记录 ---
             ClearHistory();
-            // --- 关闭历史记录层 --- 
-            CloseHistory();
         }
 
         /// <summary>
@@ -50,23 +42,6 @@ namespace AVG
                     Destroy(child.gameObject);
                 }
             }
-        }
-
-        /// <summary>
-        /// 打开历史记录
-        /// </summary>
-        public void OpenHistory()
-        {
-            historyLayer.SetActive(true);
-            StartCoroutine(AutoScrollToBottom());
-        }
-
-        /// <summary>
-        /// 关闭历史记录
-        /// </summary>
-        public void CloseHistory()
-        {
-            historyLayer.SetActive(false);
         }
 
         /// <summary>
@@ -105,16 +80,6 @@ namespace AVG
 
             // --- 填写历史记录条目字段 ---
             HistoryItem historyItem = historyItemObj.GetComponent<HistoryItem>();
-            #region 调试信息
-            if (historyItem != null)
-            {
-                print("找到HistoricalDialogueItem脚本");
-            }
-            else
-            {
-                print("没找到HistoricalDialogueItem脚本");
-            }
-            #endregion
 
             // 1. 填入名字字段
             if (isOption)
@@ -139,37 +104,35 @@ namespace AVG
         #endregion
 
         #region 生命周期
-        private void Start()
+        private void Awake()
         {
             // --- 初始化 ---
             InitHistory();
             // --- 监听事件 ---
-            if(uiManager != null)
-            {
-                uiManager.dialogueBoxUpdate += AddDialogueHistoryItem;
-                uiManager.optionButtonClicked += AddOptionHistoryItem;
-                uiManager.historyButtonClicked += (isOnHistory) =>
-                {
-                    if (isOnHistory)
-                        OpenHistory();
-                    else
-                        CloseHistory();
-                };
-            }
+            InitEvent();
+        }
+
+        private void OnDestroy()
+        {
+            ClearEvent();
         }
         #endregion
 
-        #region 私有逻辑函数
-        /// <summary>
-        /// 自动将历史记录界面滚动到底端的协程函数
-        /// </summary>
-        private IEnumerator AutoScrollToBottom()
+        #region 生命周期辅助函数
+        private void InitEvent()
         {
-            yield return new WaitForEndOfFrame(); // 等待这一帧结束，因为UI的高度不是实时刷新，而是下一帧才算出来
-
-            historyScrollRect.verticalNormalizedPosition = 0f;
+            if (uiManager != null)
+            {
+                uiManager.dialogueBoxUpdate += AddDialogueHistoryItem;
+                uiManager.onOptionButtonClicked += AddOptionHistoryItem;
+            }
         }
 
+        private void ClearEvent()
+        {
+            uiManager.dialogueBoxUpdate -= AddDialogueHistoryItem;
+            uiManager.onOptionButtonClicked -= AddOptionHistoryItem;
+        }
         #endregion
     }
 }

@@ -1,3 +1,4 @@
+using AVG.Model;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -24,11 +25,6 @@ namespace AVG
     public class StageManager : MonoBehaviour
     {
         #region 引用区域
-        [Header("Cooperative Manager")]
-        public Controller controller;
-        public UIManager uiManager;
-        public HistoryManager historyManager;
-
         [Header("Background")]
         [Tooltip("背景层")]
         [SerializeField] private GameObject bgLayer;
@@ -110,9 +106,44 @@ namespace AVG
         }
 
         /// <summary>
-        /// 根据指定的图片类型 和 新图片资源名字 更新图片
+        /// 根据给定的对话结点更新舞台
         /// </summary>
-        /// <param name="type">图片类型枚举变量</param>
+        /// <param name="node">对话结点数据</param>
+        public void UpdateStage(DialogueNode node)
+        {
+            // 检测是否有背景图片变化
+            if (node.background != null)
+            {
+                UpdateImage(bgImage, node.background);
+            }
+
+            // 检测是否有立绘变化
+            if (node.charLeft != null)
+            {
+                UpdateImage(charLeft, node.charLeft);
+            }
+
+            if (node.charCenter != null)
+            {
+                UpdateImage(charCenter, node.charCenter);
+            }
+
+            if (node.charRight != null)
+            {
+                UpdateImage(charRight, node.charRight);
+            }
+
+            // 检测是否有CG变化
+            if (node.cgImage != null)
+            {
+                UpdateImage(cgImage, node.cgImage);
+            }
+        }
+
+        /// <summary>
+        /// 根据指定的图片容器类型 和 新图片资源名字 更新图片
+        /// </summary>
+        /// <param name="type">图片容器类型枚举变量</param>
         /// <param name="newSpriteName">新图片名字</param>
         public void UpdateImage(E_StageImageType type, string newSpriteName)
         {
@@ -126,18 +157,17 @@ namespace AVG
                 case E_StageImageType.CharRight: imageToUpdate = charRight; break;
                 case E_StageImageType.CG: imageToUpdate = cgImage; break;
             }
+            // --- 更新该图片容器 ---
+            UpdateImage(imageToUpdate, newSpriteName);
+        }
 
-            #region 调试信息
-            if(imageToUpdate == null)
-            {
-                Debug.LogWarning("定位图片容器失败！");
-            }
-            else
-            {
-                print("定位图片容器成功");
-            }
-            #endregion
-
+        /// <summary>
+        /// 根据指定的图片容器 和 新图片资源名字 更新图片
+        /// </summary>
+        /// <param name="imageToUpdate">图片容器</param>
+        /// <param name="newSpriteName">新图片名字</param>
+        public void UpdateImage(Image imageToUpdate, string newSpriteName)
+        {
             // --- 获取图片容器当前内容 ---
             string oldSpriteName = imageSpriteNameDic[imageToUpdate];
 
@@ -149,7 +179,7 @@ namespace AVG
             // 情况B：指令是清除图片
             if (newSpriteName == "REMOVE")
             {
-                PerformUpdateImage(imageToUpdate, null, null); // 执行清理
+                UpdateImageWithResource(imageToUpdate, null, null); // 执行清理
                 return;
             }
 
@@ -157,11 +187,12 @@ namespace AVG
             if (oldSpriteName == newSpriteName) return;
 
             // --- 开启协程，先获取新图片资源，再更新图片 ---
-            StartCoroutine(UpdateImageAfterLoad(imageToUpdate, newSpriteName));
+            StartCoroutine(UpdateImageSearchingResource(imageToUpdate, newSpriteName));
         }
         #endregion
 
         #region 事件
+        // CG图更新事件
         public UnityAction CGUpdated;
         #endregion
 
@@ -171,7 +202,7 @@ namespace AVG
         #endregion
 
         #region 生命周期
-        private void Start()
+        private void Awake()
         {
             // --- 初始化 ---
             InitStage();
@@ -180,11 +211,11 @@ namespace AVG
 
         #region 私有逻辑函数
         /// <summary>
-        /// 用来更新背景图片、立绘图片的函数
+        /// 用来更新背景图片、立绘、CG图片的协程函数
         /// </summary>
-        /// <param name="imageToUpdate">要变化的承载图片资源的Image对象</param>
+        /// <param name="imageToUpdate">要更新的图片容器</param>
         /// <param name="newSpriteName">图片资源的名字</param>
-        private IEnumerator UpdateImageAfterLoad(Image imageToUpdate, string newSpriteName)
+        private IEnumerator UpdateImageSearchingResource(Image imageToUpdate, string newSpriteName)
         {
             // --- 获取资源 ---
             var task = ResourceManager.Instance.GetSpriteAsync(newSpriteName);
@@ -194,7 +225,7 @@ namespace AVG
             if (spriteToSet != null)
             {
                 // --- 执行最终应用逻辑 ---
-                PerformUpdateImage(imageToUpdate, newSpriteName, spriteToSet);
+                UpdateImageWithResource(imageToUpdate, newSpriteName, spriteToSet);
             }
             else
             {
@@ -207,20 +238,22 @@ namespace AVG
         /// <summary>
         /// 执行最终的图片替换、UI状态切换
         /// </summary>
-        private void PerformUpdateImage(Image image, string newSpriteName, Sprite newSprite)
+        private void UpdateImageWithResource(Image imageToUpdate, string newSpriteName, Sprite newSprite)
         {
             // 1. 更新 UI 和 字典
-            image.sprite = newSprite;
-            imageSpriteNameDic[image] = newSpriteName;
+            imageToUpdate.sprite = newSprite;
+            imageSpriteNameDic[imageToUpdate] = newSpriteName;
 
-            // 2. 特殊 UI 状态处理 (立绘显隐 / CG层开关)
-            if (image == charLeft || image == charCenter || image == charRight)
+            // 2. 特殊 UI 状态处理
+            // 立绘显隐
+            if (imageToUpdate == charLeft || imageToUpdate == charCenter || imageToUpdate == charRight)
             {
-                UpdateCharImage(image, newSprite == null); // null 意味着 REMOVE
+                UpdateCharImage(imageToUpdate, newSprite == null); // null 意味着 REMOVE
             }
-            else if (image == cgImage)
+            // CG层开关
+            else if (imageToUpdate == cgImage)
             {
-                UpdateCGImage(image, newSprite, newSprite == null); // null 意味着 REMOVE
+                UpdateCGImage(imageToUpdate, newSprite, newSprite == null); // null 意味着 REMOVE
             }
         }
 

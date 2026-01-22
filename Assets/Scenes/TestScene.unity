@@ -199,15 +199,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 035634a655b3af04ca44eaf9d9ddbdd8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stageManager: {fileID: 1150506940}
-  controller: {fileID: 3312546}
-  historyManager: {fileID: 830647253}
   systemLayer: {fileID: 693641803}
   hideButton: {fileID: 2087569456}
   hideCancelButton: {fileID: 1358035961}
   uiLayersToHide:
   - {fileID: 693641803}
   - {fileID: 1554717052}
+  historyLayer: {fileID: 965774434}
+  historyScrollRect: {fileID: 1532228342}
   historyButton: {fileID: 894558744}
   historyCloseButton: {fileID: 386356084}
   autoPlayButton: {fileID: 1436717006}
@@ -216,15 +215,15 @@ MonoBehaviour:
   skipInfoPopupPrefab: {fileID: 8633406569442989584, guid: b631f8957c7a7914ab78790ea8e43be6, type: 3}
   dialogLayer: {fileID: 1554717052}
   continueButton: {fileID: 1233168913}
-  newDialogueAudio: {fileID: 1329639798}
-  speakerName: {fileID: 611673325}
-  dialogueContent: {fileID: 1647889845}
+  dialogueBoxName: {fileID: 611673325}
+  dialogueBoxContent: {fileID: 1647889845}
+  dialogueBoxUpdatingSound: {fileID: 1329639798}
   typingInterval: 0.1
   interactionLayer: {fileID: 2082453835}
   interactionMask: {fileID: 2081708114}
-  infoContainer: {fileID: 963606936}
-  optionContainer: {fileID: 331131231}
   optionPrefab: {fileID: 7243114017658005241, guid: 75ac6e414905797489d7e3016f1384ff, type: 3}
+  optionContainer: {fileID: 331131231}
+  infoContainer: {fileID: 963606936}
 --- !u!4 &18158233
 Transform:
   m_ObjectHideFlags: 0
@@ -273,7 +272,7 @@ RectTransform:
   m_Father: {fileID: 1513564218}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -408,7 +407,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &331131231
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1341,8 +1340,6 @@ MonoBehaviour:
   uiManager: {fileID: 18158232}
   controller: {fileID: 3312546}
   stageManager: {fileID: 1150506940}
-  historyLayer: {fileID: 965774434}
-  historyScrollRect: {fileID: 1532228342}
   historyItemContainer: {fileID: 1024601358}
   historyItemPrefab: {fileID: 4176889800976311805, guid: ed8cb91e1e050ff4f975bb97ebdb63f5, type: 3}
   maxHistoryItemCount: 100
@@ -1511,7 +1508,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &963606936
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1588,7 +1585,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &965774435
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2072,9 +2069,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eea75d46ede5b5c41bd10b1656aca8ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  controller: {fileID: 3312546}
-  uiManager: {fileID: 18158232}
-  historyManager: {fileID: 830647253}
   bgLayer: {fileID: 1254581553}
   bgImage: {fileID: 1354378807}
   charLayer: {fileID: 711942102}
@@ -2809,12 +2803,12 @@ GameObject:
   - component: {fileID: 1358035962}
   - component: {fileID: 1358035961}
   m_Layer: 5
-  m_Name: 5_Hide_Mode_Layer
+  m_Name: CancelHideButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1358035960
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2822,12 +2816,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1358035959}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2146115232}
+  m_Father: {fileID: 2082453835}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -3459,9 +3453,9 @@ RectTransform:
   m_Father: {fileID: 1532228341}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: -17, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1585950726
 MonoBehaviour:
@@ -3967,7 +3961,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2082453835
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3982,6 +3976,7 @@ RectTransform:
   m_Children:
   - {fileID: 331131231}
   - {fileID: 963606936}
+  - {fileID: 1358035960}
   m_Father: {fileID: 2146115232}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -4262,7 +4257,6 @@ RectTransform:
   - {fileID: 1554717053}
   - {fileID: 965774435}
   - {fileID: 2082453835}
-  - {fileID: 1358035960}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
