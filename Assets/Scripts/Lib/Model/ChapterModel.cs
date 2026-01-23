@@ -6,7 +6,9 @@ namespace AVG.Model{
     public class ChapterModel
     {
         public string chapterId;
+        public string chapterName;
         public List<DialogueNode> dialogues;
+        public string nextId;
     }
 
     public class DialogueNode
@@ -40,6 +42,7 @@ namespace AVG.Model{
 
     public class OptionNode
     {
+        public string id;
         public string text;
         public string targetId;
     }

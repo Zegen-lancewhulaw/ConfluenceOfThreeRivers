@@ -629,9 +629,9 @@ namespace AVG
 
         #region 事件
 
-        public UnityAction<string, string> onOptionButtonClicked;
+        public UnityAction<string, string, string> onOptionButtonClicked;
 
-        public UnityAction<string> optionsDestroyed;
+        public UnityAction<string, string> optionsDestroyed;
 
         #endregion
 
@@ -715,6 +715,7 @@ namespace AVG
                 GameObject optionObj = Instantiate(optionPrefab, optionContainer);
 
                 // 2. 闭包捕获变量
+                string idOfOpt = opt.id;
                 string textOfOpt = opt.text;
                 string targetIdOfOpt = opt.targetId;
 
@@ -725,7 +726,7 @@ namespace AVG
                 Button btn = optionObj.GetComponent<Button>();
                 btn.onClick.AddListener(() =>
                 {
-                    onOptionButtonClicked?.Invoke(textOfOpt, targetIdOfOpt);
+                    onOptionButtonClicked?.Invoke(idOfOpt, textOfOpt, targetIdOfOpt);
                 });
             }
         }
@@ -734,7 +735,7 @@ namespace AVG
         /// 用于绑定对话选项的回调函数
         /// </summary>
         /// <param name="targetId">所选选项的下一个对话结点的Id</param>
-        private void OnOptionButtonClicked(string text, string targetId)
+        private void OnOptionButtonClicked(string id, string text, string targetId)
         {
             // --- 清理现场 ---
             // 销毁所有选项按钮
@@ -754,7 +755,7 @@ namespace AVG
             EventCenter.interactionFinished?.Invoke();
 
             // 触发选项销毁事件
-            optionsDestroyed?.Invoke(targetId);
+            optionsDestroyed?.Invoke(id, targetId);
         }
 
         #endregion 私有方法

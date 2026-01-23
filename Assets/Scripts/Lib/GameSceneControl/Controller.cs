@@ -9,7 +9,7 @@ using UnityEngine.Events;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
 
-public class Controller : MonoBehaviour
+public class Controller : MonoBehaviour, IRuntimeRecorder
 {
     #region 一、管理器引用
     [Header("Cooperative Managers")]
@@ -171,6 +171,20 @@ public class Controller : MonoBehaviour
     }
 
     /// <summary>
+    /// 玩家选择选项、选项互动结束后，更新选项旅程，播放目标结点
+    /// </summary>
+    /// <param name="optionId">选项的id</param>
+    /// <param name="targetId">选项所指向的目标对话结点</param>
+    private void PlayNodeAfterChoice(string optionId, string targetId)
+    {
+        // 更新选择旅程
+        UpdateChoiceJourney(optionId, targetId);
+
+        // 播放目标结点
+        PlayNode(targetId);
+    }
+
+    /// <summary>
     /// 播放给定id编号的对话结点
     /// </summary>
     /// <param name="id">对话节点的id编号</param>
@@ -196,8 +210,11 @@ public class Controller : MonoBehaviour
         // 2. 更新交互层UI
         uiManager.ShowOptions(node.options);
 
-        // 2. 更新舞台
+        // 3. 更新舞台
         stageManager.UpdateStage(node);
+
+        // --- 更新结点旅程 ---
+        UpdateNodeJourney(node.id);
    
     }
 
@@ -277,6 +294,114 @@ public class Controller : MonoBehaviour
     #endregion （3）方法
 
     #endregion 3. 自动播放
+
+    #region 4. 打包存档数据/还原读档数据
+
+    #region 运行时数据
+    // 结点旅程
+    NodeJourney _nodeJourney = new NodeJourney();
+
+    // 选项旅程
+    ChoiceJourney _choiceJourney = new ChoiceJourney();
+    #endregion 运行时数据
+
+    #region 方法
+
+    public SaveEntry PrePareSaveEntry(string saveId)
+    {
+        return new SaveEntry
+        {
+            // ---元数据---
+            saveId = saveId,
+            saveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+
+            // ---游戏现场---
+            // 章节进度
+            chapterId = _currentChapter.chapterId,
+            chapterName = _currentChapter.chapterName,
+            nodeId = _currentNode.id,
+            nodeJourney = _nodeJourney,
+            choiceJourney = _choiceJourney,
+
+            // 历史记录
+            historyRecords = PrepareHistoryRecords(),
+
+            // 视觉快照
+            bgmName = _currentNode.background,
+            charLeftName = _currentNode.charLeft,
+            charCenterName = _currentNode.charCenter,
+            charRightName = _currentNode.charRight,
+            cgName = _currentNode.cgImage,
+
+            // 音乐
+            // TODO : 从音效管理器获取背景音乐信息
+
+            // --- 玩家数据 ---
+            // TODO ：男主好感度
+
+            // TODO : 背包
+        };
+    }
+
+    /// <summary>
+    /// 进入新结点时，更新结点旅程
+    /// </summary>
+    void UpdateNodeJourney(string nodeId)
+    {
+        _nodeJourney.list.Add(nodeId);
+    }
+
+    /// <summary>
+    /// 读取存档的结点旅程覆盖目前游戏结点旅程
+    /// </summary>
+    void UpdateNodeJourney(NodeJourney loadedNodeJourney)
+    {
+        _nodeJourney = loadedNodeJourney;
+    }
+
+    /// <summary>
+    /// 玩家选择某一选项后更新选择旅程
+    /// </summary>
+    void UpdateChoiceJourney(string nodeId, string choiceId)
+    {
+        if (_choiceJourney.dic.ContainsKey(nodeId))
+        {
+            Debug.LogError($"游戏流程中结点{nodeId}出现多次选择！");
+            return;
+        }
+        else
+        {
+            _choiceJourney.dic.Add(nodeId, choiceId);
+        }
+    }
+
+    /// <summary>
+    /// 读取存档时的选择旅程覆盖目前游戏选择旅程
+    /// </summary>
+    void UpdateChoiceJourney(ChoiceJourney loadedChoiceJourney)
+    {
+        _choiceJourney = loadedChoiceJourney;
+    }
+
+    /// <summary>
+    /// 从historyManager获取历史记录目前游戏运行时的历史记录信息
+    /// </summary>
+    HistoryRecords PrepareHistoryRecords()
+    {
+        return historyManager.GetHistoryRecords();
+    }
+
+    /// <summary>
+    /// 读取存档时的历史记录信息覆盖目前游戏运行时的历史记录信息
+    /// </summary>
+    void LoadHistoryRecords(HistoryRecords loadedHistoryRecords)
+    {
+        historyManager.SetHistoryRecords(loadedHistoryRecords);
+    }
+    
+    #endregion 方法
+
+    #endregion 4. 打包存档数据/还原读档数据
 
     #endregion 三、职责
 
@@ -377,7 +502,7 @@ public class Controller : MonoBehaviour
         };
 
         // 选项交互结束后播放所选选项指向的结点
-        uiManager.optionsDestroyed += PlayNode;
+        uiManager.optionsDestroyed += PlayNodeAfterChoice;
 
         // 基于历史模式的开关维护游戏状态机
         uiManager.onHistoryButtonClicked += ChangeGameStateToHistory;
@@ -398,7 +523,7 @@ public class Controller : MonoBehaviour
         uiManager.onContinueButtonClicked -= DetermineToPlayNextNode;
         uiManager.TypingStarted -= ChangeGameStateToTyping;
         uiManager.TypingFinished -= ChangeGameStateToNormal;
-        uiManager.optionsDestroyed -= PlayNode;
+        uiManager.optionsDestroyed -= PlayNodeAfterChoice;
         uiManager.onHistoryButtonClicked -= ChangeGameStateToHistory;
         uiManager.onHistoryCloseButtonClicked -= ChangeGameStateToNormal;
         uiManager.onAutoPlayButtonClicked -= ToggleAutoMode;

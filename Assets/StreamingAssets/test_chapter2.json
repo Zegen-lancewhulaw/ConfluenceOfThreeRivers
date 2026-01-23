@@ -1,5 +1,6 @@
 {
     "chapterId" : "debug_02",
+    "chapterName" : "测试章节2",
     "dialogues" : [
         {
             "id" : "line_01",
@@ -38,10 +39,12 @@
             "content" : "你是否看到<i>0_Background_Layer</i>上发生的变化？哦，不好意思，站在你的角度观察，我应该说：你是否看到我们所在的背景环境的变化？",
             "options" : [
                 {
+                    "id" : "line_06_option_01",
                     "text" : "看到了",
                     "targetId" : "line_07"
                 },
                 {
+                    "id" : "line_06_option_02",
                     "text" : "没看到",
                     "targetId" : "line_08"
 
@@ -206,5 +209,6 @@
             "content" : "喂！怎么突然结束了！？阿米娅、爱茵，你们去哪了！？",
             "nextId" : "END"
         }
-    ]
+    ],
+    "nextId" : "debug_03"
 }
