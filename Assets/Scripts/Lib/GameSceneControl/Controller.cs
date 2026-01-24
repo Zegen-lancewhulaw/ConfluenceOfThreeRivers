@@ -3,6 +3,7 @@ using AVG.Model;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
@@ -65,6 +66,11 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
     {
         ChangeGameState(GameState.Paused);
     }
+
+    private void ChangeGameStateToPrevious()
+    {
+        ChangeGameState(_previousState);
+    }
     #endregion
 
     #region 三、职责
@@ -84,9 +90,9 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
     /// </summary>
     /// <param name="currentChapter">当前章节变量</param>
     /// <param name="dialoguesDic">当前章节的对话结点字典，以结点id为键</param>
-    private void InitCurrentChapter(out ChapterModel currentChapter, out Dictionary<string, DialogueNode> dialoguesDic)
+    private void InitCurrentChapter(string chapterId, out ChapterModel currentChapter, out Dictionary<string, DialogueNode> dialoguesDic)
     {
-        currentChapter = ScriptsManager.LoadJson<ChapterModel>("test_chapter2.json", Application.streamingAssetsPath);
+        currentChapter = ScriptsManager.LoadJson<ChapterModel>(chapterId, Application.streamingAssetsPath);
 
         if(currentChapter == null)
         {
@@ -307,9 +313,12 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
     #region 方法
 
-    // TODO : 如何处理异步存档行为？
-    public async void Save(int saveIdNum)
+    public void Save(int saveIdNum)
     {
+        // 获取舞台图片信息
+        Dictionary<string, string> stageImagesNames = stageManager.GetStageImagesNames();
+
+        // 准备存档信息
         SaveEntry saveEntry = new SaveEntry
         {
             // ---元数据---
@@ -328,11 +337,11 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
             historyRecords = PrepareHistoryRecords(),
 
             // 视觉快照
-            bgmName = _currentNode.background,
-            charLeftName = _currentNode.charLeft,
-            charCenterName = _currentNode.charCenter,
-            charRightName = _currentNode.charRight,
-            cgName = _currentNode.cgImage,
+            bgName = stageImagesNames["bg"],
+            charLeftName = stageImagesNames["charLeft"],
+            charCenterName = stageImagesNames["charCenter"],
+            charRightName = stageImagesNames["cahrRight"],
+            cgName = stageImagesNames["cg"],
 
             // 音乐
             // TODO : 从音效管理器获取背景音乐信息
@@ -343,20 +352,99 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
             // TODO : 背包
         };
 
-        SaveManager.Save(saveIdNum, saveEntry);
+        SaveManager.SaveAsync(saveIdNum, saveEntry);
     }
 
     public void Load(int saveIdNum)
     {
-        SaveEntry saveEntry = SaveManager.Load(saveIdNum);
+        StartCoroutine(LoadCoroutine(saveIdNum));
+    }
 
-        if(saveEntry == null)
+    private IEnumerator LoadCoroutine(int saveIdNum)
+    {
+        uiManager.ShowLoadingMusk(true);
+        ChangeGameState(GameState.Paused);
+
+        SaveEntry saveEntry = null;
+
+        Task<SaveEntry> task = SaveManager.LoadAsync(saveIdNum);
+        yield return new WaitUntil(() => task.IsCompleted);
+        saveEntry = task.Result;
+
+        if (saveEntry == null)
         {
             Debug.LogError($"存档{saveIdNum}获取失败");
-            return;
+            uiManager.ShowLoadingMusk(false);
+            ChangeGameState(GameState.Normal);
+            yield return null;
         }
 
-        // TODO : 开启存档加载遮罩，还原读档现场
+        if(saveEntry.nodeId == null)
+        {
+            Debug.LogError($"存档{saveIdNum}严重错误，未记录结点");
+            uiManager.ShowLoadingMusk(false);
+            ChangeGameState(GameState.Normal);
+            yield break;
+        }
+
+        InitCurrentChapter(saveEntry.chapterId, out _currentChapter, out _dialoguesDic);
+
+        if (SetCurrentNode(saveEntry.nodeId))
+        {
+            // --- 旅程和记录 ---
+            // 还原结点旅程和选择旅程
+            _nodeJourney = saveEntry.nodeJourney;
+            _choiceJourney = saveEntry.choiceJourney;
+
+            // 还原历史记录
+            historyManager.SetHistoryRecords(saveEntry.historyRecords);
+
+            // --- 对话框 ---
+            uiManager.StartUpdateDialogueBox(_currentNode.speaker, _currentNode.content);
+            uiManager.FinishUpdateDialogueBox(_currentNode.content);
+
+            // --- 选项 ---
+            if(_currentNode.options != null)
+            {
+                uiManager.ShowOptions(_currentNode.options);
+            }
+
+            // --- 舞台 ---
+            stageManager.InitStage();
+
+            List<Coroutine> list = new List<Coroutine>();
+
+            if(saveEntry.bgName != null) list.Add(stageManager.UpdateImage(E_StageImageType.Background, saveEntry.bgName));
+            if(saveEntry.charLeftName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CharLeft, saveEntry.charLeftName));
+            if(saveEntry.charCenterName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CharCenter, saveEntry.charCenterName));
+            if(saveEntry.charRightName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CharRight, saveEntry.charRightName));
+            if(saveEntry.cgName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CG, saveEntry.cgName));
+
+            // TODO : 音乐、背包、好感度......
+
+            
+
+            // 等待所有图片更新协程完成
+            foreach(Coroutine coroutine in list)
+            {
+                yield return coroutine;
+            }
+
+            // 至少等待0.5秒
+            yield return new WaitForSeconds(0.5f);
+            uiManager.ShowLoadingMusk(false);
+            ChangeGameState(GameState.Normal);
+
+            Debug.Log("读档完成");
+        }
+        else
+        {
+            Debug.LogError("存档记录的结点在章节中不存在");
+            uiManager.ShowLoadingMusk(false);
+            ChangeGameState(GameState.Normal);
+            yield return null;
+        }
+        
     }
 
     /// <summary>
@@ -427,7 +515,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
     {
         ChangeGameState(GameState.Init);
         // --- 加载剧本 ---
-        InitCurrentChapter(out _currentChapter, out _dialoguesDic);
+        InitCurrentChapter("debug_02", out _currentChapter, out _dialoguesDic);
 
         // --- 检查引用 ---
         InitReference();
@@ -438,6 +526,8 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
         ChangeGameState(GameState.Normal);
         // 开始时，播放第一句
         PlayNode("line_01");
+
+        print(Application.persistentDataPath);
     }
 
     private void Update()
@@ -503,7 +593,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
     {
         // 基于交互事件的开始和结束维护状态机
         EventCenter.interactionStarted += ChangeGameStateToInteracting;
-        EventCenter.interactionFinished += ChangeGameStateToNormal;
+        EventCenter.interactionFinished += ChangeGameStateToPrevious;
 
         // 点击对话框时决定是播放下一个还是完成打字
         uiManager.onContinueButtonClicked += DetermineToPlayNextNode;
@@ -522,7 +612,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
         // 基于历史模式的开关维护游戏状态机
         uiManager.onHistoryButtonClicked += ChangeGameStateToHistory;
-        uiManager.onHistoryCloseButtonClicked += ChangeGameStateToNormal;
+        uiManager.onHistoryCloseButtonClicked += ChangeGameStateToPrevious;
 
         // 点击自动按钮时切换自动播放状态
         uiManager.onAutoPlayButtonClicked += ToggleAutoMode;

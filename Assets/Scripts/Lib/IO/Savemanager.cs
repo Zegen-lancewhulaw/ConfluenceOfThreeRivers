@@ -2,6 +2,8 @@ using AVG.Model;
 using LitJson;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,31 +14,25 @@ namespace AVG
         public static int MaxSaveEntryCount { get => 37; private set => MaxSaveEntryCount = value; }
         private static string saveFilePath;
         
-        static SaveManager()
-        {
-            // 检查存档文件是否都存在
-            for(int i = 0; i < MaxSaveEntryCount; i++)
-            {
-                saveFilePath = GetSaveFilePath(i);
-                if (!File.Exists(saveFilePath))
-                {
-                    File.WriteAllText(saveFilePath, JsonMapper.ToJson(new SaveEntry()));
-                }
-            }
-            
-        }
 
-        public static void Save(int saveIdNum, SaveEntry saveEntry)
+        public static async void SaveAsync(int saveIdNum, SaveEntry saveEntry)
         {
             saveFilePath = GetSaveFilePath(saveIdNum);
-            if(File.Exists(saveFilePath)) File.WriteAllText(saveFilePath, JsonMapper.ToJson(saveEntry));
+
+            string json = JsonMapper.ToJson(saveEntry);
+            await Task.Run(() => {
+                File.WriteAllText(saveFilePath, json);
+            });
+
+            Debug.Log($"存档{saveIdNum}保存成功！");
         }
 
-        public static SaveEntry Load(int saveIdNum)
+        public static async Task<SaveEntry> LoadAsync(int saveIdNum)
         {
             saveFilePath = GetSaveFilePath(saveIdNum);
             if (File.Exists(saveFilePath)){
-                return JsonMapper.ToObject<SaveEntry>(File.ReadAllText(saveFilePath));
+                string json = await File.ReadAllTextAsync(saveFilePath);
+                return JsonMapper.ToObject<SaveEntry>(json);
             }
             else
             {

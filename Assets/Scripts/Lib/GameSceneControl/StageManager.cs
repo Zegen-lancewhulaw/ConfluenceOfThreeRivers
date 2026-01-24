@@ -2,6 +2,7 @@ using AVG.Model;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Build.Pipeline;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
@@ -145,7 +146,7 @@ namespace AVG
         /// </summary>
         /// <param name="type">图片容器类型枚举变量</param>
         /// <param name="newSpriteName">新图片名字</param>
-        public void UpdateImage(E_StageImageType type, string newSpriteName)
+        public Coroutine UpdateImage(E_StageImageType type, string newSpriteName)
         {
             // --- 确定要更新的图片容器 ---
             Image imageToUpdate = null;
@@ -158,7 +159,7 @@ namespace AVG
                 case E_StageImageType.CG: imageToUpdate = cgImage; break;
             }
             // --- 更新该图片容器 ---
-            UpdateImage(imageToUpdate, newSpriteName);
+             return UpdateImage(imageToUpdate, newSpriteName);
         }
 
         /// <summary>
@@ -166,7 +167,7 @@ namespace AVG
         /// </summary>
         /// <param name="imageToUpdate">图片容器</param>
         /// <param name="newSpriteName">新图片名字</param>
-        public void UpdateImage(Image imageToUpdate, string newSpriteName)
+        public Coroutine UpdateImage(Image imageToUpdate, string newSpriteName)
         {
             // --- 获取图片容器当前内容 ---
             string oldSpriteName = imageSpriteNameDic[imageToUpdate];
@@ -174,20 +175,32 @@ namespace AVG
             // --- 卫语句：处理特殊情况 ---
 
             // 情况A：指令无效
-            if (string.IsNullOrEmpty(newSpriteName)) return;
+            if (string.IsNullOrEmpty(newSpriteName)) return null;
 
             // 情况B：指令是清除图片
             if (newSpriteName == "REMOVE")
             {
                 UpdateImageWithResource(imageToUpdate, null, null); // 执行清理
-                return;
+                return null;
             }
 
             // 情况C：请求的图片就是当前显示的图片
-            if (oldSpriteName == newSpriteName) return;
+            if (oldSpriteName == newSpriteName) return null;
 
             // --- 开启协程，先获取新图片资源，再更新图片 ---
-            StartCoroutine(UpdateImageSearchingResource(imageToUpdate, newSpriteName));
+             return StartCoroutine(UpdateImageSearchingResource(imageToUpdate, newSpriteName));
+        }
+
+        public Dictionary<string, string> GetStageImagesNames()
+        {
+            return new Dictionary<string, string>
+            {
+                { "bg",imageSpriteNameDic[bgImage] },
+                { "charLeft", imageSpriteNameDic[charLeft] },
+                { "charCenter", imageSpriteNameDic[charCenter] },
+                { "charRight", imageSpriteNameDic[charRight] },
+                { "cg", imageSpriteNameDic[cgImage] }
+            };
         }
         #endregion
 

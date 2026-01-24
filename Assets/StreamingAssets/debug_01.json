@@ -1,6 +1,6 @@
 {
     "chapterId" : "debug_01",
-
+    "chapterName" : "测试章节1",
     "dialogues" : [
         {
             "id" : "line_01",
@@ -38,10 +38,12 @@
             "content" : "<b><color=red>是否确认关闭全舰防御系统？</color></b>",
             "options" : [
                 {
+                    "id" : "line_06_option_01",
                     "text" : "是",
                     "targetId" : "line_07"
                 },
                 {
+                    "id" : "line_06_option_02",
                     "text" : "否",
                     "targetId" : "line_08"
                 }
@@ -98,5 +100,6 @@
             "content" : "------测试结束------",
             "nextId" : "END"
         }
-    ]
+    ],
+    "nextId" : "debug_02"
 }

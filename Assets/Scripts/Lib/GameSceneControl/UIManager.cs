@@ -803,6 +803,33 @@ namespace AVG
 
         #endregion UI层次4：交互层
 
+        #region UI层次5：遮罩层
+
+        #region 引用
+        [Header("遮罩层")]
+        [SerializeField] private GameObject loadingMusk;
+        #endregion 引用
+
+        #region 方法
+
+        public void ShowLoadingMusk(bool isShown)
+        {
+            if (isShown)
+            {
+                loadingMusk.SetActive(true);
+            }
+            else
+            {
+                loadingMusk.SetActive(false);
+            }
+        }
+
+        #endregion 方法
+
+
+
+        #endregion UI层次5：遮罩层
+
         #endregion UI层次结构
 
     }
