@@ -55,7 +55,7 @@ namespace AVG.Model
     public class SaveEntry
     {
         // --- 元数据 ---
-        public string saveId; // 存档的标识
+        public int saveIdNum; // 存档的编号
         public string saveTime; // "yyyy-MM-dd HH:mm"
 
         // --- 游戏现场 ---
@@ -90,6 +90,7 @@ namespace AVG.Model
 
     public interface IRuntimeRecorder
     {
-        SaveEntry PrePareSaveEntry(string saveId);
+        void Save(int saveIdNum);
+        void Load(int saveIdNum);
     }
 }

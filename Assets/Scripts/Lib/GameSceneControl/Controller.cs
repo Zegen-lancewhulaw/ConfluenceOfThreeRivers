@@ -178,7 +178,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
     private void PlayNodeAfterChoice(string optionId, string targetId)
     {
         // 更新选择旅程
-        UpdateChoiceJourney(optionId, targetId);
+        UpdateChoiceJourney(_currentNode.id, optionId);
 
         // 播放目标结点
         PlayNode(targetId);
@@ -295,7 +295,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
     #endregion 3. 自动播放
 
-    #region 4. 打包存档数据/还原读档数据
+    #region 4. 存档数据/还原读档数据
 
     #region 运行时数据
     // 结点旅程
@@ -307,12 +307,13 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
     #region 方法
 
-    public SaveEntry PrePareSaveEntry(string saveId)
+    // TODO : 如何处理异步存档行为？
+    public async void Save(int saveIdNum)
     {
-        return new SaveEntry
+        SaveEntry saveEntry = new SaveEntry
         {
             // ---元数据---
-            saveId = saveId,
+            saveIdNum = saveIdNum,
             saveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
 
             // ---游戏现场---
@@ -341,6 +342,21 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
             // TODO : 背包
         };
+
+        SaveManager.Save(saveIdNum, saveEntry);
+    }
+
+    public void Load(int saveIdNum)
+    {
+        SaveEntry saveEntry = SaveManager.Load(saveIdNum);
+
+        if(saveEntry == null)
+        {
+            Debug.LogError($"存档{saveIdNum}获取失败");
+            return;
+        }
+
+        // TODO : 开启存档加载遮罩，还原读档现场
     }
 
     /// <summary>
