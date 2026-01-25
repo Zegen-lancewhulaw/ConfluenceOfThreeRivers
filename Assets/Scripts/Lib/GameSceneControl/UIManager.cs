@@ -6,6 +6,7 @@ using System.Threading;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using static UnityEditor.Progress;
 
 namespace AVG
 {
@@ -59,6 +60,7 @@ namespace AVG
             InitHistory();
             InitAuto();
             InitSkip();
+            InitSaveLoad();
         }
         #endregion 初始化
 
@@ -119,7 +121,7 @@ namespace AVG
             hideCancelButton.gameObject.SetActive(true);
 
             // 触发交互事件
-            EventCenter.interactionStarted?.Invoke();
+            EventCenter.OnInteractionStarted?.Invoke();
         }
 
         /// <summary>
@@ -138,7 +140,7 @@ namespace AVG
             interactionLayer.gameObject.SetActive(false);
 
             // 触发交互结束事件结束
-            EventCenter.interactionFinished?.Invoke();
+            EventCenter.OnInteractionFinished?.Invoke();
         }
 
         #endregion 方法
@@ -162,8 +164,8 @@ namespace AVG
         #endregion 引用
 
         #region 事件
-        public UnityAction onHistoryButtonClicked;
-        public UnityAction onHistoryCloseButtonClicked;
+        public UnityAction OnHistoryButtonClicked;
+        public UnityAction OnHistoryCloseButtonClicked;
         #endregion 事件
 
         #region 方法
@@ -196,7 +198,7 @@ namespace AVG
             {
                 historyButton.onClick.AddListener(() => {
                     OpenHistory();
-                    onHistoryButtonClicked?.Invoke();
+                    OnHistoryButtonClicked?.Invoke();
                 });
             }
 
@@ -209,7 +211,7 @@ namespace AVG
                 historyCloseButton.onClick.AddListener(() =>
                 {
                     CloseHistory();
-                    onHistoryCloseButtonClicked?.Invoke();
+                    OnHistoryCloseButtonClicked?.Invoke();
                 });
             }
         }
@@ -256,7 +258,7 @@ namespace AVG
         #endregion 引用
 
         #region 事件
-        public UnityAction onAutoPlayButtonClicked;
+        public UnityAction OnAutoPlayButtonClicked;
         #endregion 事件
 
         #region 初始化
@@ -281,7 +283,7 @@ namespace AVG
                     // 文字变化
                     autoPlayButtonText.text = (autoPlayButtonText.text == "自动") ? "自动中..." : "自动";
                     // 点击后的其他效果
-                    onAutoPlayButtonClicked?.Invoke();
+                    OnAutoPlayButtonClicked?.Invoke();
                 });
             }
         }
@@ -334,7 +336,7 @@ namespace AVG
             infoContainer.gameObject.SetActive(true);
 
             // 触发交互事件
-            EventCenter.interactionStarted?.Invoke();
+            EventCenter.OnInteractionStarted?.Invoke();
 
             // 创造信息弹窗
             GameObject infoPopupObj = Instantiate(skipInfoPopupPrefab, infoContainer);
@@ -357,6 +359,58 @@ namespace AVG
         #endregion 方法
 
         #endregion UI模块2.4 跳过
+
+        #region UI模块2.5 存档/读档
+
+        #region 引用
+
+        [Header("System-Save/Load")]
+        [Tooltip("主游戏界面上用于打开存档页面的按钮")]
+        [SerializeField] private Button openSavePanelButton;
+        [Tooltip("主游戏界面上用于打开读档页面的按钮")]
+        [SerializeField] private Button openLoadPanelButton;
+
+        #endregion 引用
+
+        #region 事件
+
+        public UnityAction OnOpenSavePanelButtonClicked;
+
+        #endregion 事件
+
+        #region 方法
+
+        public void InitSaveLoad()
+        {
+            if(openSavePanelButton == null)
+            {
+                Debug.LogWarning("存档按钮为空");
+            }
+            else
+            {
+                openSavePanelButton.onClick.AddListener(() =>
+                {
+                    OnOpenSavePanelButtonClicked?.Invoke();
+                });
+            }
+
+            if(openLoadPanelButton == null)
+            {
+                Debug.LogWarning("读档按钮为空");
+            }
+            else
+            {
+                openLoadPanelButton.onClick.AddListener(() =>
+                {
+                    GlobalUIManager.Instance.ShowSaveLoadPanel(false);
+                });
+            }
+
+        }
+
+        #endregion
+
+        #endregion UI模块2.5 存档/读档
 
         #endregion UI层次2：系统层
 
@@ -383,13 +437,13 @@ namespace AVG
 
         #region 事件
         // 对话框继续按钮被点击
-        public UnityAction onContinueButtonClicked;
+        public UnityAction OnContinueButtonClicked;
         // 对话框内容更新
-        public UnityAction<string, string> dialogueBoxUpdate;
+        public UnityAction<string, string> OnDialogueBoxUpdate;
         // 开始打字
-        public UnityAction TypingStarted;
+        public UnityAction OnTypingStarted;
         // 结束打字
-        public UnityAction TypingFinished;
+        public UnityAction OnTypingFinished;
         #endregion
 
         #region 运行时变量
@@ -410,11 +464,17 @@ namespace AVG
             dialogLayer?.SetActive(true);
 
             // 对话框点击继续按钮
-            continueButton?.onClick.AddListener(() => onContinueButtonClicked());
+            continueButton?.onClick.AddListener(() => OnContinueButtonClicked());
 
             // 绑定音效
             // TODO : 绑定音效逻辑日后转移到专门的音效管理器中处理
-            dialogueBoxUpdate += PlayDialogueBoxUpdatingSound;
+            OnDialogueBoxUpdate += PlayDialogueBoxUpdatingSound;
+        }
+
+        public void SetDialogueBox(string name, string content)
+        {
+            dialogueBoxName.text = name;
+            dialogueBoxContent.text = content;
         }
 
         /// <summary>
@@ -423,7 +483,7 @@ namespace AVG
         public void StartUpdateDialogueBox(string name, string content)
         {
             // --- 事件唤醒 ---
-            dialogueBoxUpdate?.Invoke(name, content);
+            OnDialogueBoxUpdate?.Invoke(name, content);
 
             // --- 更新说话者名字 ---
             dialogueBoxName.text = name;
@@ -445,7 +505,7 @@ namespace AVG
             dialogueBoxContent.text = content;
 
             // 事件唤醒
-            TypingFinished?.Invoke();
+            OnTypingFinished?.Invoke();
 
             // 维护运行时
             tagList.Clear();
@@ -545,7 +605,7 @@ namespace AVG
 
                 // 4. 追加最终单字
                 // --- 事件唤醒 ---
-                TypingStarted?.Invoke();
+                OnTypingStarted?.Invoke();
                 dialogueBoxContent.text += additionStr;
 
                 yield return new WaitForSeconds(typingInterval);
@@ -556,7 +616,7 @@ namespace AVG
             tagList.Clear();
 
             // --- 事件唤醒 ---
-            TypingFinished?.Invoke();
+            OnTypingFinished?.Invoke();
         }
 
         /// <summary>
@@ -629,9 +689,9 @@ namespace AVG
 
         #region 事件
 
-        public UnityAction<string, string, string> onOptionButtonClicked;
+        public UnityAction<string, string, string> OnOptionButtonClicked;
 
-        public UnityAction<string, string> optionsDestroyed;
+        public UnityAction<string, string> OnOptionsDestroyed;
 
         #endregion
 
@@ -659,9 +719,14 @@ namespace AVG
 
             // --- 监听事件 ---
             // 打字结束时，获得生成选项的许可令牌
-            TypingFinished += () => { optionToken = true; };
+            OnTypingFinished += () => { optionToken = true; };
             // 选项按钮点击事件
-            onOptionButtonClicked += OnOptionButtonClicked;
+            OnOptionButtonClicked += HandleOptionButtonClicked;
+        }
+
+        public void ShowOptionsDirectly(List<OptionNode> options)
+        {
+            PerformOptionsCreation(options);
         }
 
         /// <summary>
@@ -699,8 +764,13 @@ namespace AVG
             if(options == null) yield break;
 
             // 触发交互事件
-            EventCenter.interactionStarted?.Invoke();
+            EventCenter.OnInteractionStarted?.Invoke();
 
+            PerformOptionsCreation(options);
+        }
+
+        private void PerformOptionsCreation(List<OptionNode> options)
+        {
             // 启动交互层
             interactionLayer.gameObject.SetActive(true);
             interactionMask.gameObject.SetActive(true);
@@ -724,10 +794,10 @@ namespace AVG
 
                 // 4. 为选项按钮绑定点击效果
                 Button btn = optionObj.GetComponent<Button>();
-                btn.onClick.AddListener(() =>
+                btn.onClick.AddListener((UnityAction)(() =>
                 {
-                    onOptionButtonClicked?.Invoke(idOfOpt, textOfOpt, targetIdOfOpt);
-                });
+                    this.OnOptionButtonClicked?.Invoke(idOfOpt, textOfOpt, targetIdOfOpt);
+                }));
             }
         }
 
@@ -735,7 +805,7 @@ namespace AVG
         /// 用于绑定对话选项的回调函数
         /// </summary>
         /// <param name="targetId">所选选项的下一个对话结点的Id</param>
-        private void OnOptionButtonClicked(string id, string text, string targetId)
+        private void HandleOptionButtonClicked(string id, string text, string targetId)
         {
             // --- 清理现场 ---
             // 销毁所有选项按钮
@@ -752,10 +822,10 @@ namespace AVG
             interactionLayer.gameObject.SetActive(false);
 
             // 触发交互结束事件
-            EventCenter.interactionFinished?.Invoke();
+            EventCenter.OnInteractionFinished?.Invoke();
 
             // 触发选项销毁事件
-            optionsDestroyed?.Invoke(id, targetId);
+            OnOptionsDestroyed?.Invoke(id, targetId);
         }
 
         #endregion 私有方法
@@ -794,7 +864,7 @@ namespace AVG
             infoContainer.gameObject.SetActive(false);
             interactionMask.gameObject.SetActive(false);
             interactionLayer.gameObject.SetActive(false);
-            EventCenter.interactionFinished?.Invoke();
+            EventCenter.OnInteractionFinished?.Invoke();
         }
 
         #endregion 方法

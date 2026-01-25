@@ -54,10 +54,6 @@ namespace AVG.Model
     [Serializable]
     public class SaveEntry
     {
-        // --- 元数据 ---
-        public int saveIdNum; // 存档的编号
-        public string saveTime; // "yyyy-MM-dd HH:mm"
-
         // --- 游戏现场 ---
         // 1. 章节进度
         public string chapterId;
@@ -88,9 +84,27 @@ namespace AVG.Model
 
     }
 
+    [Serializable]
+    public class SaveHeader
+    {
+        public string saveIdNum; // 存档槽id
+        public string screenshotName; // 截图文件名
+        public string chapterName; // 章节显示名称
+        public string saveTime; // "yyyy-MM-dd HH:mm"
+        public long saveTimeStamp; // 存档时间戳，用来比较哪个是最新
+    }
+
+    [Serializable]
+    public class SaveHeaders
+    {
+        public Dictionary<string, SaveHeader> headers = new Dictionary<string, SaveHeader>();
+
+        public string latestSaveEntryId = "";
+    }
+
     public interface IRuntimeRecorder
     {
-        void Save(int saveIdNum);
-        void Load(int saveIdNum);
+        void Save(string saveIdNum);
+        void Load(string saveIdNum);
     }
 }

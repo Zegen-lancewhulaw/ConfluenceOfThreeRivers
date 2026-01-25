@@ -152,15 +152,15 @@ namespace AVG
         {
             if (uiManager != null)
             {
-                uiManager.dialogueBoxUpdate += AddDialogueHistoryItem;
-                uiManager.onOptionButtonClicked += AddOptionHistoryItem;
+                uiManager.OnDialogueBoxUpdate += AddDialogueHistoryItem;
+                uiManager.OnOptionButtonClicked += AddOptionHistoryItem;
             }
         }
 
         private void ClearEvent()
         {
-            uiManager.dialogueBoxUpdate -= AddDialogueHistoryItem;
-            uiManager.onOptionButtonClicked -= AddOptionHistoryItem;
+            uiManager.OnDialogueBoxUpdate -= AddDialogueHistoryItem;
+            uiManager.OnOptionButtonClicked -= AddOptionHistoryItem;
         }
         #endregion
     }

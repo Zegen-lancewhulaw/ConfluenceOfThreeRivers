@@ -99,11 +99,11 @@ namespace AVG
             }
 
             // 初始记录被控制的若干Image容器当前存储的图片的名字
-            imageSpriteNameDic.Add(bgImage, null);
-            imageSpriteNameDic.Add(charLeft, null);
-            imageSpriteNameDic.Add(charCenter, null);
-            imageSpriteNameDic.Add(charRight, null);
-            imageSpriteNameDic.Add(cgImage, null);
+            imageSpriteNameDic[bgImage] = null;
+            imageSpriteNameDic[charLeft] = null;
+            imageSpriteNameDic[charCenter] = null;
+            imageSpriteNameDic[charRight] = null;
+            imageSpriteNameDic[cgImage] = null;
         }
 
         /// <summary>

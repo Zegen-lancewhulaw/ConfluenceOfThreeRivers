@@ -34,7 +34,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
         _currentState = newState;
 
         // 触发状态变更事件
-        EventCenter.gameStateChanged?.Invoke();
+        EventCenter.OnGameStateChanged?.Invoke();
     }
 
     private void ChangeGameStateToInit()
@@ -309,22 +309,54 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
     // 选项旅程
     ChoiceJourney _choiceJourney = new ChoiceJourney();
+
+    // 存档截图
+    Texture2D _screenshot = null;
     #endregion 运行时数据
 
     #region 方法
 
-    public void Save(int saveIdNum)
+    /// <summary>
+    /// 玩家点击主游戏场景中的“存档”按钮时触发
+    /// 在游戏界面点击“存档”按钮、开启存档界面之前，先截取游戏画面，再开启存档界面
+    /// </summary>
+    /// <param name="act">用于承载开启存档界面的函数</param>
+    private void HandleOpenSavePanelButtonClicked()
     {
-        // 获取舞台图片信息
-        Dictionary<string, string> stageImagesNames = stageManager.GetStageImagesNames();
+        StartCoroutine(ScreenshotAndOpenSavePanelCoroutine());
+    }
+
+    private IEnumerator ScreenshotAndOpenSavePanelCoroutine()
+    {
+        // 等待帧末尾渲染完毕后截图
+        yield return new WaitForEndOfFrame();
+
+        _screenshot = ScreenCapture.CaptureScreenshotAsTexture();
+
+        // 截图完成，打开存档界面
+        GlobalUIManager.Instance.ShowSaveLoadPanel(true);
+    }
+
+    public async void Save(string saveIdNum)
+    {
+        // 准备存档头信息
+        SaveHeader saveHeader = new SaveHeader
+        {
+            saveIdNum = saveIdNum,
+            screenshotName = $"save{saveIdNum}",
+            chapterName = _currentChapter.chapterName,
+            saveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            saveTimeStamp = DateTime.Now.Ticks
+        };
+
+        // 命令存档管理器更新并写入存档头、写入截图
+        await SaveManager.WriteSaveHeadersAsync(saveHeader, _screenshot);
 
         // 准备存档信息
+        // 获取舞台图片信息
+        Dictionary<string, string> stageImagesNames = stageManager.GetStageImagesNames();
         SaveEntry saveEntry = new SaveEntry
         {
-            // ---元数据---
-            saveIdNum = saveIdNum,
-            saveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-
             // ---游戏现场---
             // 章节进度
             chapterId = _currentChapter.chapterId,
@@ -340,7 +372,7 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
             bgName = stageImagesNames["bg"],
             charLeftName = stageImagesNames["charLeft"],
             charCenterName = stageImagesNames["charCenter"],
-            charRightName = stageImagesNames["cahrRight"],
+            charRightName = stageImagesNames["charRight"],
             cgName = stageImagesNames["cg"],
 
             // 音乐
@@ -352,15 +384,19 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
             // TODO : 背包
         };
 
-        SaveManager.SaveAsync(saveIdNum, saveEntry);
+        // 命令存档管理器写入存档
+        await SaveManager.SaveAsync(saveIdNum, saveEntry);
+
+        // 写入操作全部完成，触发事件
+        EventCenter.OnSaveOperationFinished?.Invoke();
     }
 
-    public void Load(int saveIdNum)
+    public void Load(string saveIdNum)
     {
         StartCoroutine(LoadCoroutine(saveIdNum));
     }
 
-    private IEnumerator LoadCoroutine(int saveIdNum)
+    private IEnumerator LoadCoroutine(string saveIdNum)
     {
         uiManager.ShowLoadingMusk(true);
         ChangeGameState(GameState.Paused);
@@ -399,16 +435,6 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
             // 还原历史记录
             historyManager.SetHistoryRecords(saveEntry.historyRecords);
 
-            // --- 对话框 ---
-            uiManager.StartUpdateDialogueBox(_currentNode.speaker, _currentNode.content);
-            uiManager.FinishUpdateDialogueBox(_currentNode.content);
-
-            // --- 选项 ---
-            if(_currentNode.options != null)
-            {
-                uiManager.ShowOptions(_currentNode.options);
-            }
-
             // --- 舞台 ---
             stageManager.InitStage();
 
@@ -419,6 +445,15 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
             if(saveEntry.charCenterName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CharCenter, saveEntry.charCenterName));
             if(saveEntry.charRightName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CharRight, saveEntry.charRightName));
             if(saveEntry.cgName != null) list.Add(stageManager.UpdateImage(E_StageImageType.CG, saveEntry.cgName));
+
+            // --- 对话框 ---
+            uiManager.SetDialogueBox(_currentNode.speaker, _currentNode.content);
+
+            // --- 选项 ---
+            if(_currentNode.options != null)
+            {
+                uiManager.ShowOptionsDirectly(_currentNode.options);
+            }
 
             // TODO : 音乐、背包、好感度......
 
@@ -432,10 +467,20 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
 
             // 至少等待0.5秒
             yield return new WaitForSeconds(0.5f);
-            uiManager.ShowLoadingMusk(false);
-            ChangeGameState(GameState.Normal);
 
             Debug.Log("读档完成");
+            EventCenter.OnLoadOperationFinished?.Invoke();
+
+            uiManager.ShowLoadingMusk(false);
+            if (_currentNode.options != null)
+            {
+                ChangeGameState(GameState.Interacting);
+            }
+            else
+            {
+                ChangeGameState(GameState.Normal);
+            }
+
         }
         else
         {
@@ -592,48 +637,68 @@ public class Controller : MonoBehaviour, IRuntimeRecorder
     private void InitEvent()
     {
         // 基于交互事件的开始和结束维护状态机
-        EventCenter.interactionStarted += ChangeGameStateToInteracting;
-        EventCenter.interactionFinished += ChangeGameStateToPrevious;
+        EventCenter.OnInteractionStarted += ChangeGameStateToInteracting;
+        EventCenter.OnInteractionFinished += ChangeGameStateToPrevious;
 
         // 点击对话框时决定是播放下一个还是完成打字
-        uiManager.onContinueButtonClicked += DetermineToPlayNextNode;
+        uiManager.OnContinueButtonClicked += DetermineToPlayNextNode;
 
         // 监视打字机状态
-        uiManager.TypingStarted += ChangeGameStateToTyping;
-        uiManager.TypingFinished += ChangeGameStateToNormal;
-        EventCenter.gameStateChanged += () =>
+        uiManager.OnTypingStarted += ChangeGameStateToTyping;
+        uiManager.OnTypingFinished += ChangeGameStateToNormal;
+        EventCenter.OnGameStateChanged += () =>
         {
             if (_currentState != GameState.Normal && _currentState != GameState.Typing) uiManager.PauseUpdateDialogueBox(true);
             else uiManager.PauseUpdateDialogueBox(false);
         };
 
         // 选项交互结束后播放所选选项指向的结点
-        uiManager.optionsDestroyed += PlayNodeAfterChoice;
+        uiManager.OnOptionsDestroyed += PlayNodeAfterChoice;
 
         // 基于历史模式的开关维护游戏状态机
-        uiManager.onHistoryButtonClicked += ChangeGameStateToHistory;
-        uiManager.onHistoryCloseButtonClicked += ChangeGameStateToPrevious;
+        uiManager.OnHistoryButtonClicked += ChangeGameStateToHistory;
+        uiManager.OnHistoryCloseButtonClicked += ChangeGameStateToPrevious;
 
         // 点击自动按钮时切换自动播放状态
-        uiManager.onAutoPlayButtonClicked += ToggleAutoMode;
+        uiManager.OnAutoPlayButtonClicked += ToggleAutoMode;
+
+        // 点击游戏界面上的存档按钮时，先截屏，再打开存档界面
+        uiManager.OnOpenSavePanelButtonClicked += HandleOpenSavePanelButtonClicked;
+
+        // 点击存档界面上的存档按钮时，根据存档编号，保存运行时数据
+        GlobalUIManager.Instance.OnSaveButtonClickedHandlerPipline += Save;
+
+        // 点击读档界面上的读档按钮时，根据存档编号，进行读档
+        GlobalUIManager.Instance.OnLoadButtonClickedHandlerPipline += Load;
+
+        // 读档结束时，先进入正常游戏状态
+        EventCenter.OnLoadOperationFinished += ChangeGameStateToNormal;
 
         // 状态变化时调试信息
-        EventCenter.gameStateChanged += () => { print($"Current Game State: {_currentState}"); };
+        EventCenter.OnGameStateChanged += LogGameStateChange;
+    }
+
+    private void LogGameStateChange()
+    {
+        print($"Current Game State: from {_previousState} to {_currentState}");
     }
 
     private void ClearEvent()
     {
-        EventCenter.gameStateChanged = null;
-        EventCenter.interactionStarted = null;
-        EventCenter.interactionFinished = null;
-        uiManager.onContinueButtonClicked -= DetermineToPlayNextNode;
-        uiManager.TypingStarted -= ChangeGameStateToTyping;
-        uiManager.TypingFinished -= ChangeGameStateToNormal;
-        uiManager.optionsDestroyed -= PlayNodeAfterChoice;
-        uiManager.onHistoryButtonClicked -= ChangeGameStateToHistory;
-        uiManager.onHistoryCloseButtonClicked -= ChangeGameStateToNormal;
-        uiManager.onAutoPlayButtonClicked -= ToggleAutoMode;
-
+        EventCenter.OnGameStateChanged -= LogGameStateChange;
+        EventCenter.OnInteractionStarted -= ChangeGameStateToInteracting;
+        EventCenter.OnInteractionFinished -= ChangeGameStateToPrevious;
+        uiManager.OnContinueButtonClicked -= DetermineToPlayNextNode;
+        uiManager.OnTypingStarted -= ChangeGameStateToTyping;
+        uiManager.OnTypingFinished -= ChangeGameStateToNormal;
+        uiManager.OnOptionsDestroyed -= PlayNodeAfterChoice;
+        uiManager.OnHistoryButtonClicked -= ChangeGameStateToHistory;
+        uiManager.OnHistoryCloseButtonClicked -= ChangeGameStateToNormal;
+        uiManager.OnAutoPlayButtonClicked -= ToggleAutoMode;
+        uiManager.OnOpenSavePanelButtonClicked -= HandleOpenSavePanelButtonClicked;
+        GlobalUIManager.Instance.OnSaveButtonClickedHandlerPipline -= Save;
+        GlobalUIManager.Instance.OnLoadButtonClickedHandlerPipline -= Load;
+        EventCenter.OnLoadOperationFinished -= ChangeGameStateToNormal;
     }
 
     #endregion 五、生命周期辅助函数

@@ -5,11 +5,15 @@ namespace AVG
 {
     public static class EventCenter
     {
-        public static UnityAction gameStateChanged;
+        public static UnityAction OnGameStateChanged;
 
-        public static UnityAction interactionStarted;
+        public static UnityAction OnInteractionStarted;
 
-        public static UnityAction interactionFinished;
+        public static UnityAction OnInteractionFinished;
+
+        public static UnityAction OnSaveOperationFinished;
+
+        public static UnityAction OnLoadOperationFinished;
     }
 
 }
